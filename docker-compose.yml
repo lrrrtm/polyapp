@@ -1,0 +1,69 @@
+services:
+  db:
+    image: ${POSTGRES_IMAGE:?POSTGRES_IMAGE is required}
+    container_name: ${POSTGRES_CONTAINER_NAME:?POSTGRES_CONTAINER_NAME is required}
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_HOST_PORT:?POSTGRES_HOST_PORT is required}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: ${API_IMAGE_NAME:?API_IMAGE_NAME is required}
+    container_name: ${API_CONTAINER_NAME:?API_CONTAINER_NAME is required}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${API_HOST_PORT:?API_HOST_PORT is required}:8000"
+    environment:
+      DATABASE_URL: ${API_DATABASE_URL:?API_DATABASE_URL is required}
+      DB_ECHO: ${DB_ECHO:-false}
+      RUZ_BASE_URL: ${RUZ_BASE_URL:-https://ruz.spbstu.ru/api/v1/ruz/}
+      RUZ_TIMEOUT: ${RUZ_TIMEOUT:-10.0}
+      USER_COOKIE_NAME: ${USER_COOKIE_NAME:-polytech_user}
+      USER_COOKIE_MAX_AGE: ${USER_COOKIE_MAX_AGE:-31536000}
+      USER_COOKIE_SECURE: ${USER_COOKIE_SECURE:-false}
+      USER_COOKIE_SAMESITE: ${USER_COOKIE_SAMESITE:-lax}
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).read()\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+    image: ${FRONTEND_IMAGE_NAME:?FRONTEND_IMAGE_NAME is required}
+    container_name: ${FRONTEND_CONTAINER_NAME:?FRONTEND_CONTAINER_NAME is required}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_HOST_PORT:?FRONTEND_HOST_PORT is required}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
+    name: ${POSTGRES_DATA_VOLUME:?POSTGRES_DATA_VOLUME is required}
