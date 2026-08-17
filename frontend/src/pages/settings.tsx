@@ -183,7 +183,7 @@ export function SettingsPage() {
                 <Stack spacing={0.5} sx={{ minWidth: 0 }}>
                   <Typography variant="body1">Скрывать прошедшие пары</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Отображать только текущее и последующие занятия на сегодня
+                    Будут отображаться только текущее и последующие занятия на сегодня
                   </Typography>
                 </Stack>
                 <Switch

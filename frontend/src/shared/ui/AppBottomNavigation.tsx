@@ -1,4 +1,5 @@
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
+import SchoolIcon from '@mui/icons-material/School';
 import SettingsIcon from '@mui/icons-material/Settings'
 import AppBar from '@mui/material/AppBar'
 import BottomNavigation from '@mui/material/BottomNavigation'
@@ -8,6 +9,11 @@ import { useLocation, useNavigate } from 'react-router'
 import { centeredFixedSurfaceSx } from './layout'
 
 const navigationItems = [
+  {
+    label: 'Поступление',
+    value: '/freshman',
+    icon: <SchoolIcon />,
+  },
   {
     label: 'Расписание',
     value: '/schedule',

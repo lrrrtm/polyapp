@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from app.schemas.ruz import GroupSchedule
 
@@ -10,6 +10,7 @@ def get_mock_group_schedule(group_id: int, schedule_date: date | None) -> GroupS
     requested_date = schedule_date or today
     current_week_start = _week_start(today)
     requested_week_start = _week_start(requested_date)
+    current_break_lessons = _current_break_lessons()
 
     if group_id != MOCK_GROUP_ID or requested_week_start != current_week_start:
         return None
@@ -190,6 +191,7 @@ def get_mock_group_schedule(group_id: int, schedule_date: date | None) -> GroupS
                             _teacher(14236, "Ильин Николай Петрович", "Кафедра физики"),
                             _auditorium(3512, "305", 4, "Учебный корпус N 2", "2 к.", "Политехническая ул., 29"),
                         ),
+                        *current_break_lessons,
                     ],
                 ),
                 _day(current_week_start, 5, []),
@@ -214,8 +216,8 @@ def _day(week_start: date, offset: int, lessons: list[dict[str, object]]) -> dic
 def _lesson(
     subject: str,
     subject_short: str,
-    time_start: str,
-    time_end: str,
+    time_start: str | datetime,
+    time_end: str | datetime,
     lesson_type: dict[str, object],
     teacher: dict[str, object],
     auditorium: dict[str, object],
@@ -232,6 +234,35 @@ def _lesson(
         "teachers": [teacher],
         "auditories": [auditorium],
     }
+
+
+def _current_break_lessons() -> list[dict[str, object]]:
+    now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+    previous_start = now - timedelta(minutes=95)
+    previous_end = now - timedelta(minutes=5)
+    next_start = now + timedelta(minutes=1)
+    next_end = now + timedelta(minutes=105)
+
+    return [
+        _lesson(
+            "Тестовая пара перед текущим перерывом",
+            "Тест",
+            previous_start,
+            previous_end,
+            {"id": 2, "name": "Практическое занятие", "abbr": "Прак"},
+            _teacher(12483, "Антонов Александр Петрович", "Высшая школа программной инженерии"),
+            _auditorium(2756, "1324", 11, "Гидробашня", "Гидробашня", "Политехническая ул., 29"),
+        ),
+        _lesson(
+            "Тестовая пара после текущего перерыва",
+            "Тест",
+            next_start,
+            next_end,
+            {"id": 1, "name": "Лекция", "abbr": "Лек"},
+            _teacher(17126, "Киреев Сергей Петрович", "Высшая школа программной инженерии"),
+            _auditorium(2794, "1332", 11, "Гидробашня", "Гидробашня", "Политехническая ул., 29"),
+        ),
+    ]
 
 
 def _teacher(teacher_id: int, full_name: str, chair: str) -> dict[str, object]:

@@ -11,6 +11,7 @@ import Divider from '@mui/material/Divider'
 import EventBusyIcon from '@mui/icons-material/EventBusy'
 import IconButton from '@mui/material/IconButton'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
+import LinearProgress from '@mui/material/LinearProgress'
 import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
@@ -357,6 +358,7 @@ export function SchedulePage() {
             const timeStart = formatLessonTime(lesson.time_start)
             const timeEnd = formatLessonTime(lesson.time_end)
             const activeLesson = isLessonActive(lesson.time_start, lesson.time_end, now)
+            const activeBreak = nextLesson ? isBreakActive(lesson, nextLesson, now) : false
 
             return (
               <Box key={`${lesson.subject}-${lesson.time_start}-${index}`}>
@@ -422,7 +424,7 @@ export function SchedulePage() {
                 </ButtonBase>
                 {index < visibleLessons.length - 1 ? (
                   showBreaks && breakMinutes > 0 ? (
-                    <BreakRow minutes={breakMinutes} />
+                    <BreakRow minutes={breakMinutes} active={activeBreak} />
                   ) : (
                     <Divider />
                   )
@@ -663,7 +665,7 @@ function formatChair(chair: string | undefined): string {
 function formatAuditorium(auditorium: { name: string; building: { abbr: string; name: string } }): string {
   const building = auditorium.building.name
   const room = /^\d+$/.test(auditorium.name) ? `ауд. ${auditorium.name}` : auditorium.name
-  return building ? `${room}, ${building}` : room
+  return building ? `${building}, ${room}` : room
 }
 
 function getLessonMapUrl(lesson: Lesson, buildingMapLinksById: Map<number, { yandex_maps_url: string }>): string | undefined {
@@ -681,6 +683,17 @@ function isLessonActive(timeStart: string | null, timeEnd: string | null, now: D
   const end = new Date(timeEnd).getTime()
   const current = now.getTime()
   return current >= start && current <= end
+}
+
+function isBreakActive(previousLesson: Lesson, nextLesson: Lesson, now: Date): boolean {
+  if (!previousLesson.time_end || !nextLesson.time_start) {
+    return false
+  }
+
+  const previousEnd = new Date(previousLesson.time_end).getTime()
+  const nextStart = new Date(nextLesson.time_start).getTime()
+  const current = now.getTime()
+  return current > previousEnd && current < nextStart
 }
 
 function isLessonPast(timeEnd: string | null, now: Date): boolean {
@@ -743,14 +756,25 @@ function ScheduleLoading({ show }: { show: boolean }) {
   )
 }
 
-function BreakRow({ minutes }: { minutes: number }) {
+function BreakRow({ minutes, active }: { minutes: number; active: boolean }) {
   return (
-    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', py: 1 }}>
-      <Divider sx={{ flex: 1 }} />
+    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', py: 1.25 }}>
+      {active ? (
+        <LinearProgress
+          aria-label="Идёт перерыв"
+          sx={{ flex: 1, height: 2, borderRadius: 1, transform: 'scaleX(-1)' }}
+        />
+      ) : (
+        <Divider sx={{ flex: 1 }} />
+      )}
       <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
         Перерыв {formatBreakDuration(minutes)}
       </Typography>
-      <Divider sx={{ flex: 1 }} />
+      {active ? (
+        <LinearProgress aria-label="Идёт перерыв" sx={{ flex: 1, height: 2, borderRadius: 1 }} />
+      ) : (
+        <Divider sx={{ flex: 1 }} />
+      )}
     </Stack>
   )
 }

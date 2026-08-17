@@ -110,7 +110,7 @@ export function HelloPage() {
                   Привет!
                 </Typography>
                 <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 420 }}>
-                  Здесь ты сможешь быстро и удобно смотреть расписание занятий, преподавателей и аудиторий
+                  Здесь ты сможешь удобно смотреть расписание занятий, преподавателей и аудиторий
                   Политеха. Начнём?
                 </Typography>
               </Stack>
