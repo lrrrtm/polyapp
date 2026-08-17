@@ -39,13 +39,23 @@ def override_ruz() -> None:
 
 
 @pytest.mark.asyncio
-async def test_me_creates_anonymous_user_and_sets_cookie(override_db: None) -> None:
+async def test_get_me_without_user_returns_not_found(override_db: None) -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/api/v1/me")
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "USER_NOT_FOUND"
+
+
+@pytest.mark.asyncio
+async def test_post_me_creates_anonymous_user_and_sets_cookie(override_db: None) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post("/api/v1/me")
 
     assert response.status_code == 200
     assert response.json()["primary_group"] is None
     assert response.json()["favorites"] == []
+    assert response.json()["applicant_code"] is None
     assert "polytech_user" in response.cookies
 
 
@@ -53,7 +63,7 @@ async def test_me_creates_anonymous_user_and_sets_cookie(override_db: None) -> N
 async def test_session_reports_missing_and_existing_cookie(override_db: None) -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         missing = await client.get("/api/v1/session")
-        await client.get("/api/v1/me")
+        await client.post("/api/v1/me")
         existing = await client.get("/api/v1/session")
 
     assert missing.status_code == 200
@@ -63,10 +73,10 @@ async def test_session_reports_missing_and_existing_cookie(override_db: None) ->
 
 
 @pytest.mark.asyncio
-async def test_me_reuses_cookie_user(override_db: None) -> None:
+async def test_post_me_reuses_cookie_user(override_db: None) -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        first = await client.get("/api/v1/me")
-        second = await client.get("/api/v1/me")
+        first = await client.post("/api/v1/me")
+        second = await client.post("/api/v1/me")
 
     assert first.status_code == 200
     assert second.status_code == 200
@@ -76,6 +86,7 @@ async def test_me_reuses_cookie_user(override_db: None) -> None:
 @pytest.mark.asyncio
 async def test_set_primary_group_keeps_single_primary(override_db: None, override_ruz: None) -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        await client.post("/api/v1/me")
         first = await client.put("/api/v1/me/primary-group", json={"ruz_id": 42828})
         second = await client.put("/api/v1/me/primary-group", json={"ruz_id": 45476})
 
@@ -92,6 +103,7 @@ async def test_add_group_and_teacher_favorites_without_duplicates(
     override_ruz: None,
 ) -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        await client.post("/api/v1/me")
         group = await client.post("/api/v1/me/favorites", json={"item_type": "group", "ruz_id": 42828})
         duplicate_group = await client.post("/api/v1/me/favorites", json={"item_type": "group", "ruz_id": 42828})
         teacher = await client.post("/api/v1/me/favorites", json={"item_type": "teacher", "ruz_id": 9833})
@@ -111,6 +123,7 @@ async def test_add_group_and_teacher_favorites_without_duplicates(
 @pytest.mark.asyncio
 async def test_delete_favorite(override_db: None, override_ruz: None) -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        await client.post("/api/v1/me")
         created = await client.post("/api/v1/me/favorites", json={"item_type": "teacher", "ruz_id": 9833})
         deleted = await client.delete(f"/api/v1/me/favorites/{created.json()['id']}")
         favorites = await client.get("/api/v1/me/favorites")
@@ -124,6 +137,7 @@ async def test_primary_group_rejects_unknown_group(override_db: None) -> None:
     app.dependency_overrides[get_ruz_client] = lambda: FakeRuzClient(missing_groups={4549423423432})
     try:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            await client.post("/api/v1/me")
             response = await client.put("/api/v1/me/primary-group", json={"ruz_id": 4549423423432})
             profile = await client.get("/api/v1/me")
     finally:
@@ -161,6 +175,7 @@ async def test_favorite_rejects_unknown_ruz_id(
     )
     try:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            await client.post("/api/v1/me")
             response = await client.post(
                 "/api/v1/me/favorites",
                 json={"item_type": item_type.value, "ruz_id": 4549423423432},
@@ -181,6 +196,7 @@ async def test_favorite_returns_bad_gateway_on_ruz_failure(override_db: None) ->
     app.dependency_overrides[get_ruz_client] = lambda: FakeRuzClient(fail=True)
     try:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            await client.post("/api/v1/me")
             response = await client.post("/api/v1/me/favorites", json={"item_type": "group", "ruz_id": 42828})
     finally:
         app.dependency_overrides.pop(get_ruz_client, None)

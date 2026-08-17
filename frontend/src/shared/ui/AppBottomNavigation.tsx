@@ -1,5 +1,5 @@
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
-import SchoolIcon from '@mui/icons-material/School';
+import SchoolIcon from '@mui/icons-material/School'
 import SettingsIcon from '@mui/icons-material/Settings'
 import AppBar from '@mui/material/AppBar'
 import BottomNavigation from '@mui/material/BottomNavigation'
@@ -30,7 +30,7 @@ export function AppBottomNavigation() {
   const location = useLocation()
   const navigate = useNavigate()
   const theme = useTheme()
-  const currentValue = location.pathname.startsWith('/settings') ? '/settings' : '/schedule'
+  const currentValue = navigationItems.find((item) => location.pathname.startsWith(item.value))?.value ?? '/schedule'
 
   return (
     <AppBar

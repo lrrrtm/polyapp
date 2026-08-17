@@ -1,21 +1,5 @@
 import Skeleton, { type SkeletonProps } from '@mui/material/Skeleton'
-import { useEffect, useState } from 'react'
-
-function useDelayedVisible(show: boolean, delay = 250): boolean {
-  const [visible, setVisible] = useState(false)
-
-  useEffect(() => {
-    if (!show) {
-      setVisible(false)
-      return
-    }
-
-    const timeoutId = window.setTimeout(() => setVisible(true), delay)
-    return () => window.clearTimeout(timeoutId)
-  }, [delay, show])
-
-  return visible
-}
+import { useDelayedVisible } from './useDelayedVisible'
 
 type DelayedSkeletonProps = SkeletonProps & {
   show: boolean
@@ -23,7 +7,10 @@ type DelayedSkeletonProps = SkeletonProps & {
 }
 
 export function DelayedSkeleton({ show, delay, ...props }: DelayedSkeletonProps) {
-  if (!useDelayedVisible(show, delay)) {
+  const delayedVisible = useDelayedVisible(show, delay)
+  const visible = delay === 0 ? show : delayedVisible
+
+  if (!visible) {
     return null
   }
 

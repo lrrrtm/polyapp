@@ -4,8 +4,9 @@ from uuid import UUID
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.admissions.service import get_applicant_profile
 from app.users.models import ScheduleItemType, User, UserScheduleItem
-from app.users.schemas import UserProfile, UserScheduleItemRead
+from app.users.schemas import UserApplicantCodeRead, UserProfile, UserScheduleItemRead
 
 
 async def get_user_by_identity_hash(db: AsyncSession, identity_hash: str) -> User | None:
@@ -38,10 +39,16 @@ async def get_profile(db: AsyncSession, user: User) -> UserProfile:
     items = await list_schedule_items(db, user)
     primary_group = next((item for item in items if item.is_primary), None)
     favorites = [item for item in items if not item.is_primary]
+    applicant_profile = await get_applicant_profile(db, user)
     return UserProfile(
         id=user.id,
         primary_group=UserScheduleItemRead.model_validate(primary_group) if primary_group else None,
         favorites=[UserScheduleItemRead.model_validate(item) for item in favorites],
+        applicant_code=(
+            UserApplicantCodeRead(code=applicant_profile.applicant_code, updated_at=applicant_profile.updated_at)
+            if applicant_profile
+            else None
+        ),
     )
 
 
@@ -116,4 +123,3 @@ async def _get_schedule_item(
         )
     )
     return result.scalar_one_or_none()
-

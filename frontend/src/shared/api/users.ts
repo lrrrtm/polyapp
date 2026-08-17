@@ -17,6 +17,10 @@ const userProfileSchema = z.object({
   id: z.uuid(),
   primary_group: scheduleItemSchema.nullable(),
   favorites: z.array(scheduleItemSchema),
+  applicant_code: z.object({
+    code: z.string(),
+    updated_at: z.string(),
+  }).nullable(),
 })
 
 export type SessionStatus = {
@@ -25,6 +29,7 @@ export type SessionStatus = {
 
 export type ScheduleItem = z.infer<typeof scheduleItemSchema>
 export type UserProfile = z.infer<typeof userProfileSchema>
+export type UserProfileApplicantCode = NonNullable<UserProfile['applicant_code']>
 
 export async function getSessionStatus(): Promise<SessionStatus> {
   const data = await apiGet('/api/v1/session', sessionStatusSchema)
@@ -36,7 +41,7 @@ export async function getCurrentUser(): Promise<UserProfile> {
 }
 
 export async function createCurrentUser(): Promise<UserProfile> {
-  return getCurrentUser()
+  return apiPost('/api/v1/me', undefined, userProfileSchema)
 }
 
 export async function setPrimaryGroup(ruzId: number): Promise<UserProfile> {
@@ -45,4 +50,11 @@ export async function setPrimaryGroup(ruzId: number): Promise<UserProfile> {
 
 export async function addFavorite(itemType: ScheduleItem['item_type'], ruzId: number): Promise<ScheduleItem> {
   return apiPost('/api/v1/me/favorites', { item_type: itemType, ruz_id: ruzId }, scheduleItemSchema)
+}
+
+export function setUserProfileApplicantCode(
+  profile: UserProfile | undefined,
+  applicantCode: UserProfileApplicantCode,
+): UserProfile | undefined {
+  return profile ? { ...profile, applicant_code: applicantCode } : profile
 }

@@ -27,10 +27,16 @@ class UserScheduleItemRead(UserModel):
     created_at: datetime
 
 
+class UserApplicantCodeRead(BaseModel):
+    code: str
+    updated_at: datetime
+
+
 class UserProfile(UserModel):
     id: UUID
     primary_group: UserScheduleItemRead | None
     favorites: list[UserScheduleItemRead]
+    applicant_code: UserApplicantCodeRead | None
 
 
 class SessionStatus(BaseModel):

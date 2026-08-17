@@ -8,7 +8,7 @@ from app.api.errors import ApiError, ApiErrorCode, problem_responses
 from app.clients.ruz import RuzApiError, RuzClient, RuzNotFoundError
 from app.core.config import get_settings
 from app.db.session import get_db
-from app.users.deps import get_current_user, hash_identity_token
+from app.users.deps import get_current_user, get_or_create_current_user, hash_identity_token
 from app.users.models import ScheduleItemType, User
 from app.users.schemas import FavoriteCreate, PrimaryGroupSet, SessionStatus, UserProfile, UserScheduleItemRead
 from app.users.service import add_schedule_item, delete_schedule_item, get_profile, get_user_by_identity_hash, set_primary_group
@@ -30,9 +30,17 @@ async def read_session(
     return SessionStatus(has_user=user is not None)
 
 
-@router.get("/me", response_model=UserProfile)
+@router.get("/me", response_model=UserProfile, responses=problem_responses(status.HTTP_404_NOT_FOUND))
 async def read_me(
     user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> UserProfile:
+    return await get_profile(db, user)
+
+
+@router.post("/me", response_model=UserProfile)
+async def create_me(
+    user: User = Depends(get_or_create_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> UserProfile:
     return await get_profile(db, user)
@@ -116,13 +124,7 @@ async def validate_group_id(ruz: RuzClient, group_id: int) -> None:
     try:
         await ruz.ensure_group_exists(group_id)
     except RuzNotFoundError as error:
-        raise ApiError(
-            status_code=status.HTTP_404_NOT_FOUND,
-            code=ApiErrorCode.RUZ_GROUP_NOT_FOUND,
-            title="Group not found",
-            message="Группа не найдена в расписании Политеха.",
-            details={"service": "ruz", "resource": "group", "ruz_id": group_id},
-        ) from error
+        raise ruz_not_found_error("group", group_id) from error
     except RuzApiError as error:
         raise ruz_upstream_error("group", group_id) from error
 
@@ -131,15 +133,28 @@ async def validate_teacher_id(ruz: RuzClient, teacher_id: int) -> None:
     try:
         await ruz.ensure_teacher_exists(teacher_id)
     except RuzNotFoundError as error:
-        raise ApiError(
-            status_code=status.HTTP_404_NOT_FOUND,
-            code=ApiErrorCode.RUZ_TEACHER_NOT_FOUND,
-            title="Teacher not found",
-            message="Преподаватель не найден в расписании Политеха.",
-            details={"service": "ruz", "resource": "teacher", "ruz_id": teacher_id},
-        ) from error
+        raise ruz_not_found_error("teacher", teacher_id) from error
     except RuzApiError as error:
         raise ruz_upstream_error("teacher", teacher_id) from error
+
+
+def ruz_not_found_error(resource: str, ruz_id: int) -> ApiError:
+    if resource == "group":
+        return ApiError(
+            status_code=status.HTTP_404_NOT_FOUND,
+            code=ApiErrorCode.RUZ_GROUP_NOT_FOUND,
+            title="Group not found",
+            message="Группа не найдена в расписании Политеха.",
+            details={"service": "ruz", "resource": resource, "ruz_id": ruz_id},
+        )
+
+    return ApiError(
+        status_code=status.HTTP_404_NOT_FOUND,
+        code=ApiErrorCode.RUZ_TEACHER_NOT_FOUND,
+        title="Teacher not found",
+        message="Преподаватель не найден в расписании Политеха.",
+        details={"service": "ruz", "resource": resource, "ruz_id": ruz_id},
+    )
 
 
 def ruz_upstream_error(resource: str, ruz_id: int) -> ApiError:

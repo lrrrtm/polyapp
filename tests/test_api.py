@@ -169,6 +169,7 @@ def test_openapi_documents_problem_error_responses() -> None:
         ("/api/v1/me/primary-group", "put"): {"404", "502"},
         ("/api/v1/me/favorites", "post"): {"404", "502"},
         ("/api/v1/me/favorites/{item_id}", "delete"): {"404"},
+        ("/api/v1/me/admissions", "get"): {"404", "503"},
     }
 
     for (path, method), status_codes in documented_responses.items():

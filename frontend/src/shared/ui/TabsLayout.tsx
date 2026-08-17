@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react'
 import { useLocation, useOutlet } from 'react-router'
 import { AppBottomNavigation } from './AppBottomNavigation'
 
-const tabPaths = ['/schedule', '/settings']
+const tabPaths = ['/freshman', '/schedule', '/settings']
 
 export function TabsLayout() {
   const location = useLocation()

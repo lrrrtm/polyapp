@@ -7,9 +7,12 @@ import Typography from '@mui/material/Typography'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router'
+import { queryKeys } from '../shared/api/queryKeys'
 import { type Faculty, type Group, getFaculties, getGroupsByFaculty } from '../shared/api/ruz'
-import { getCurrentUser, getSessionStatus, setPrimaryGroup } from '../shared/api/users'
+import { useRequiredUser } from '../shared/api/useRequiredUser'
+import { setPrimaryGroup } from '../shared/api/users'
 import { AppAutocomplete } from '../shared/ui/AppAutocomplete'
+import { CenteredAlert } from '../shared/ui/CenteredAlert'
 import { PageSkeleton } from '../shared/ui/PageSkeleton'
 
 export function RegisterPage() {
@@ -17,64 +20,40 @@ export function RegisterPage() {
   const queryClient = useQueryClient()
   const [faculty, setFaculty] = useState<Faculty | null>(null)
   const [group, setGroup] = useState<Group | null>(null)
+  const user = useRequiredUser()
 
-  const sessionQuery = useQuery({
-    queryKey: ['session'],
-    queryFn: getSessionStatus,
-  })
-  const profileQuery = useQuery({
-    queryKey: ['me'],
-    queryFn: getCurrentUser,
-    enabled: sessionQuery.data?.hasUser === true,
-  })
   const facultiesQuery = useQuery({
-    queryKey: ['faculties'],
+    queryKey: queryKeys.faculties(),
     queryFn: getFaculties,
-    enabled: sessionQuery.data?.hasUser === true,
+    enabled: user.status === 'ready',
   })
   const groupsQuery = useQuery({
-    queryKey: ['faculty-groups', faculty?.id],
+    queryKey: queryKeys.facultyGroups(faculty?.id),
     queryFn: () => getGroupsByFaculty(faculty?.id ?? 0),
     enabled: faculty !== null,
   })
   const saveMutation = useMutation({
     mutationFn: () => setPrimaryGroup(group?.id ?? 0),
     onSuccess: async (profile) => {
-      queryClient.setQueryData(['me'], profile)
-      await queryClient.invalidateQueries({ queryKey: ['session'] })
+      queryClient.setQueryData(queryKeys.me(), profile)
+      await queryClient.invalidateQueries({ queryKey: queryKeys.session() })
       navigate('/', { replace: true })
     },
   })
 
-  if (sessionQuery.isPending) {
+  if (user.status === 'loading') {
     return <PageSkeleton show />
   }
 
-  if (sessionQuery.isError) {
-    return (
-      <Container maxWidth="sm" sx={{ minHeight: '100vh', display: 'grid', alignItems: 'center' }}>
-        <Alert severity="error">Не удалось проверить сессию.</Alert>
-      </Container>
-    )
+  if (user.status === 'error') {
+    return <CenteredAlert message={user.errorMessage} />
   }
 
-  if (!sessionQuery.data.hasUser) {
+  if (user.status === 'anonymous') {
     return <Navigate to="/hello" replace />
   }
 
-  if (profileQuery.isPending) {
-    return <PageSkeleton show />
-  }
-
-  if (profileQuery.isError) {
-    return (
-      <Container maxWidth="sm" sx={{ minHeight: '100vh', display: 'grid', alignItems: 'center' }}>
-        <Alert severity="error">Не удалось загрузить профиль.</Alert>
-      </Container>
-    )
-  }
-
-  if (profileQuery.data.primary_group) {
+  if (user.profile.primary_group) {
     return <Navigate to="/" replace />
   }
 

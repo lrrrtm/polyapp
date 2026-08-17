@@ -12,11 +12,15 @@ logger = logging.getLogger(__name__)
 
 
 class ApiErrorCode(StrEnum):
+    ADMISSIONS_DATA_UNAVAILABLE = "ADMISSIONS_DATA_UNAVAILABLE"
+    APPLICANT_CODE_NOT_FOUND = "APPLICANT_CODE_NOT_FOUND"
+    APPLICANT_CODE_NOT_SET = "APPLICANT_CODE_NOT_SET"
     FAVORITE_NOT_FOUND = "FAVORITE_NOT_FOUND"
     RUZ_GROUP_NOT_FOUND = "RUZ_GROUP_NOT_FOUND"
     RUZ_TEACHER_NOT_FOUND = "RUZ_TEACHER_NOT_FOUND"
     RUZ_RESOURCE_NOT_FOUND = "RUZ_RESOURCE_NOT_FOUND"
     RUZ_UPSTREAM_ERROR = "RUZ_UPSTREAM_ERROR"
+    USER_NOT_FOUND = "USER_NOT_FOUND"
 
 
 PROBLEM_MEDIA_TYPE = "application/problem+json"
@@ -24,6 +28,7 @@ PROBLEM_MEDIA_TYPE = "application/problem+json"
 ERROR_RESPONSE_DESCRIPTIONS = {
     status.HTTP_404_NOT_FOUND: "Resource was not found.",
     status.HTTP_502_BAD_GATEWAY: "Upstream schedule service failed.",
+    status.HTTP_503_SERVICE_UNAVAILABLE: "Service data is temporarily unavailable.",
 }
 
 ERROR_RESPONSE_EXAMPLES = {
@@ -52,6 +57,20 @@ ERROR_RESPONSE_EXAMPLES = {
                 "message": "Сервис расписания временно недоступен. Попробуйте позже.",
                 "request_id": "8bb2d4c84b804948a763c74b82f13b2e",
                 "details": {"service": "ruz"},
+            },
+        }
+    },
+    status.HTTP_503_SERVICE_UNAVAILABLE: {
+        "data_unavailable": {
+            "summary": "Admissions data has not been loaded yet",
+            "value": {
+                "type": "https://polytech.local/errors/admissions-data-unavailable",
+                "title": "Admissions data unavailable",
+                "status": 503,
+                "code": "ADMISSIONS_DATA_UNAVAILABLE",
+                "message": "Данные конкурсных списков пока недоступны. Попробуйте позже.",
+                "request_id": "8bb2d4c84b804948a763c74b82f13b2e",
+                "details": {"service": "spbstu_admissions"},
             },
         }
     },

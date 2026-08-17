@@ -1,6 +1,3 @@
-import Alert from '@mui/material/Alert'
-import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import CheckIcon from '@mui/icons-material/Check'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import Container from '@mui/material/Container'
@@ -12,18 +9,22 @@ import ListItemText from '@mui/material/ListItemText'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { type ReactNode, useMemo, useState } from 'react'
 import { Navigate } from 'react-router'
 import { type ThemePreference, useThemePreference } from '../app/theme-preference-context'
 import { useUserPreferences } from '../app/user-preferences-context'
-import { type Group, getGroupSchedule, searchGroups } from '../shared/api/ruz'
-import { getCurrentUser, getSessionStatus, setPrimaryGroup } from '../shared/api/users'
+import { ApplicantCodeDrawer } from '../features/profile/ApplicantCodeDrawer'
+import { GroupDrawer } from '../features/profile/GroupDrawer'
+import { queryKeys } from '../shared/api/queryKeys'
+import { type Group, getGroupSchedule } from '../shared/api/ruz'
+import { useRequiredUser } from '../shared/api/useRequiredUser'
 import { getWeekStartDate, toIsoDate } from '../shared/date'
-import { AppAutocomplete } from '../shared/ui/AppAutocomplete'
+import { AppScreen } from '../shared/ui/AppScreen'
 import { BottomDrawer } from '../shared/ui/BottomDrawer'
+import { CenteredAlert } from '../shared/ui/CenteredAlert'
+import { DelayedSkeleton } from '../shared/ui/DelayedSkeleton'
 import { PageSkeleton } from '../shared/ui/PageSkeleton'
-import { appMaxWidth } from '../shared/ui/layout'
 
 const themePreferenceOptions: Array<{ value: ThemePreference; label: string }> = [
   { value: 'system', label: 'Системная' },
@@ -32,95 +33,42 @@ const themePreferenceOptions: Array<{ value: ThemePreference; label: string }> =
 ]
 
 export function SettingsPage() {
-  const queryClient = useQueryClient()
   const { themePreference, setThemePreference } = useThemePreference()
   const { hidePastLessons, setHidePastLessons, showBreaks, setShowBreaks } = useUserPreferences()
   const [themeDrawerOpen, setThemeDrawerOpen] = useState(false)
+  const [applicantDrawerOpen, setApplicantDrawerOpen] = useState(false)
   const [groupDrawerOpen, setGroupDrawerOpen] = useState(false)
-  const [confirmGroupDrawerOpen, setConfirmGroupDrawerOpen] = useState(false)
-  const [pendingGroup, setPendingGroup] = useState<Group | null>(null)
-  const [groupSearch, setGroupSearch] = useState('')
-  const [debouncedGroupSearch, setDebouncedGroupSearch] = useState('')
   const currentWeekStartDate = useMemo(() => getWeekStartDate(toIsoDate(new Date())), [])
-  const sessionQuery = useQuery({
-    queryKey: ['session'],
-    queryFn: getSessionStatus,
-  })
-  const profileQuery = useQuery({
-    queryKey: ['me'],
-    queryFn: getCurrentUser,
-    enabled: sessionQuery.data?.hasUser === true,
-  })
-  const primaryGroupId = profileQuery.data?.primary_group?.ruz_id
+  const user = useRequiredUser()
+  const primaryGroupId = user.status === 'ready' ? user.profile.primary_group?.ruz_id : undefined
   const currentGroupQuery = useQuery({
-    queryKey: ['schedule', 'group', primaryGroupId, currentWeekStartDate],
+    queryKey: queryKeys.schedule('group', primaryGroupId, currentWeekStartDate),
     queryFn: () => getGroupSchedule(primaryGroupId ?? 0, currentWeekStartDate),
     enabled: primaryGroupId !== undefined,
   })
-  const groupSearchQuery = useQuery({
-    queryKey: ['groups-search', debouncedGroupSearch],
-    queryFn: () => searchGroups(debouncedGroupSearch),
-    enabled: groupDrawerOpen && debouncedGroupSearch.length > 0,
-  })
   const currentGroup = currentGroupQuery.data?.group ?? (primaryGroupId ? createGroupFallback(primaryGroupId) : null)
-  const groupOptions = useMemo(
-    () => dedupeGroups([currentGroup, ...(groupSearchQuery.data ?? [])]),
-    [currentGroup, groupSearchQuery.data],
-  )
-  const savePrimaryGroupMutation = useMutation({
-    mutationFn: () => setPrimaryGroup(pendingGroup?.id ?? 0),
-    onSuccess: async (profile) => {
-      queryClient.setQueryData(['me'], profile)
-      await queryClient.invalidateQueries({ queryKey: ['schedule'] })
-      setConfirmGroupDrawerOpen(false)
-      setPendingGroup(null)
-    },
-  })
 
-  useEffect(() => {
-    if (currentGroup && groupDrawerOpen && !confirmGroupDrawerOpen) {
-      setGroupSearch(currentGroup.name)
-      setDebouncedGroupSearch('')
-    }
-  }, [confirmGroupDrawerOpen, currentGroup, groupDrawerOpen])
-
-  useEffect(() => {
-    const trimmedSearch = groupSearch.trim()
-    if (!trimmedSearch || trimmedSearch === currentGroup?.name) {
-      setDebouncedGroupSearch('')
-      return
-    }
-
-    const timeoutId = window.setTimeout(() => setDebouncedGroupSearch(trimmedSearch), 350)
-    return () => window.clearTimeout(timeoutId)
-  }, [currentGroup?.name, groupSearch])
-
-  if (sessionQuery.isPending) {
+  if (user.status === 'loading') {
     return <PageSkeleton show />
   }
 
-  if (sessionQuery.isError) {
-    return <CenteredAlert message="Не удалось проверить сессию." />
+  if (user.status === 'error') {
+    return <CenteredAlert message={user.errorMessage} />
   }
 
-  if (!sessionQuery.data.hasUser) {
+  if (user.status === 'anonymous') {
     return <Navigate to="/hello" replace />
   }
 
-  if (profileQuery.isPending) {
-    return <PageSkeleton show />
-  }
-
-  if (profileQuery.isError) {
-    return <CenteredAlert message="Не удалось загрузить профиль." />
-  }
-
-  if (!profileQuery.data.primary_group) {
-    return <Navigate to="/register" replace />
-  }
+  const applicantCodeSubtitle = user.profile.applicant_code?.code ?? 'Не указан'
+  const currentGroupSubtitle = currentGroupQuery.isPending && primaryGroupId ? (
+    <DelayedSkeleton show variant="text" width={104} />
+  ) : (
+    currentGroup?.name ?? (primaryGroupId ? `Группа ${primaryGroupId}` : 'Не указана')
+  )
 
   return (
-    <Box sx={{ height: '100svh', maxWidth: appMaxWidth, mx: 'auto', overflow: 'hidden', bgcolor: 'background.default' }}>
+    <AppScreen>
       <Container
         component="main"
         maxWidth="sm"
@@ -146,12 +94,24 @@ export function SettingsPage() {
           </Stack>
           <Stack spacing={1}>
             <Typography variant="overline" component="h2" color="text.secondary">
+              Поступление
+            </Typography>
+            <List disablePadding>
+              <SettingsRow
+                title="Уникальный код поступающего"
+                subtitle={applicantCodeSubtitle}
+                onClick={() => setApplicantDrawerOpen(true)}
+              />
+            </List>
+          </Stack>
+          <Stack spacing={1}>
+            <Typography variant="overline" component="h2" color="text.secondary">
               Расписание
             </Typography>
             <List disablePadding>
               <SettingsRow
                 title="Учебная группа"
-                subtitle={currentGroup?.name ?? `Группа ${primaryGroupId}`}
+                subtitle={currentGroupSubtitle}
                 onClick={() => setGroupDrawerOpen(true)}
               />
               <Divider component="li" />
@@ -164,7 +124,7 @@ export function SettingsPage() {
                 <Stack spacing={0.5} sx={{ minWidth: 0 }}>
                   <Typography variant="body1">Показывать перерывы</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Между блоками занятий будет отображаться свобдное время
+                    Между блоками занятий будет отображаться свободное время
                   </Typography>
                 </Stack>
                 <Switch
@@ -221,86 +181,20 @@ export function SettingsPage() {
           ))}
         </List>
       </BottomDrawer>
-      <BottomDrawer
+      <ApplicantCodeDrawer
+        open={applicantDrawerOpen}
+        onClose={() => setApplicantDrawerOpen(false)}
+        currentCode={user.profile.applicant_code?.code}
+      />
+      <GroupDrawer
         open={groupDrawerOpen}
         onClose={() => setGroupDrawerOpen(false)}
-        title="Учебная группа"
-      >
-        <Stack spacing={2.5} sx={{ px: 3, pt: 1, pb: 4 }}>
-          <AppAutocomplete
-            options={groupOptions}
-            value={currentGroup}
-            label="Учебная группа"
-            inputValue={groupSearch}
-            loading={groupSearchQuery.isPending || currentGroupQuery.isPending}
-            getOptionLabel={(option) => option.name}
-            isOptionEqualToValue={(option, value) => option.id === value.id}
-            noOptionsText="Группы не найдены"
-            error={groupSearchQuery.isError || currentGroupQuery.isError}
-            helperText={groupSearchQuery.isError ? 'Не удалось найти группы.' : undefined}
-            onChange={(value) => {
-              if (!value || value.id === primaryGroupId) {
-                return
-              }
-
-              setPendingGroup(value)
-              setGroupDrawerOpen(false)
-              setConfirmGroupDrawerOpen(true)
-            }}
-            onInputChange={setGroupSearch}
-          />
-        </Stack>
-      </BottomDrawer>
-      <BottomDrawer
-        open={confirmGroupDrawerOpen}
-        onClose={() => {
-          setConfirmGroupDrawerOpen(false)
-          setGroupDrawerOpen(true)
-          setGroupSearch(currentGroup?.name ?? '')
-        }}
-        onExited={() => setPendingGroup(null)}
-        title="Изменить группу?"
-      >
-        <Stack spacing={2.5} sx={{ px: 3, pt: 1, pb: 4 }}>
-          <Stack spacing={0.75}>
-            <Typography variant="body1">
-              Сохранить новую учебную группу?
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {pendingGroup?.name}
-            </Typography>
-          </Stack>
-          <Stack direction="row" spacing={1.25}>
-            <Button
-              variant="outlined"
-              size="large"
-              disabled={savePrimaryGroupMutation.isPending}
-              onClick={() => {
-                setConfirmGroupDrawerOpen(false)
-                setGroupDrawerOpen(true)
-                setGroupSearch(currentGroup?.name ?? '')
-              }}
-              fullWidth
-            >
-              Отмена
-            </Button>
-            <Button
-              variant="contained"
-              size="large"
-              disabled={!pendingGroup || pendingGroup.id === primaryGroupId}
-              loading={savePrimaryGroupMutation.isPending}
-              onClick={() => savePrimaryGroupMutation.mutate()}
-              fullWidth
-            >
-              Сохранить
-            </Button>
-          </Stack>
-          {savePrimaryGroupMutation.isError ? (
-            <Alert severity="error">Не удалось сохранить группу. Попробуй ещё раз.</Alert>
-          ) : null}
-        </Stack>
-      </BottomDrawer>
-    </Box>
+        currentGroup={currentGroup}
+        primaryGroupId={primaryGroupId}
+        loading={currentGroupQuery.isFetching}
+        error={currentGroupQuery.isError}
+      />
+    </AppScreen>
   )
 }
 
@@ -317,18 +211,6 @@ function createGroupFallback(groupId: number): Group {
   }
 }
 
-function dedupeGroups(groups: Array<Group | null | undefined>): Group[] {
-  const seen = new Set<number>()
-  return groups.filter((group): group is Group => {
-    if (!group || seen.has(group.id)) {
-      return false
-    }
-
-    seen.add(group.id)
-    return true
-  })
-}
-
 function formatThemePreference(preference: ThemePreference): string {
   return themePreferenceOptions.find((option) => option.value === preference)?.label ?? 'Системная'
 }
@@ -339,7 +221,7 @@ function SettingsRow({
   onClick,
 }: {
   title: string
-  subtitle: string
+  subtitle: ReactNode
   onClick: () => void
 }) {
   return (
@@ -360,13 +242,5 @@ function SettingsRow({
       />
       <ChevronRightIcon color="action" />
     </ListItemButton>
-  )
-}
-
-function CenteredAlert({ message }: { message: string }) {
-  return (
-    <Container maxWidth="sm" sx={{ minHeight: '100vh', display: 'grid', alignItems: 'center' }}>
-      <Alert severity="error">{message}</Alert>
-    </Container>
   )
 }
