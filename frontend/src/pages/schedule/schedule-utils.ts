@@ -41,10 +41,10 @@ export function getScheduleTitle(item: ScheduleItem | null | undefined, schedule
   }
 
   if (item.item_type === 'teacher') {
-    return schedule && 'teacher' in schedule ? schedule.teacher.full_name : `Преподаватель ${item.ruz_id}`
+    return schedule && 'teacher' in schedule ? schedule.teacher.full_name : 'Расписание'
   }
 
-  return schedule && 'group' in schedule ? schedule.group.name : `Группа ${item.ruz_id}`
+  return schedule && 'group' in schedule ? schedule.group.name : 'Расписание'
 }
 
 export function getScheduleSubtitle(item: ScheduleItem | null | undefined, schedule: Schedule | undefined): string {
@@ -130,6 +130,15 @@ export function getBreakDurationMinutes(previousLesson: Lesson, nextLesson: Less
   return diffMinutes > 0 ? diffMinutes : 0
 }
 
+export function getBreakRemainingSeconds(previousLesson: Lesson, nextLesson: Lesson, now: Date): number {
+  if (!isBreakActive(previousLesson, nextLesson, now) || !nextLesson.time_start) {
+    return 0
+  }
+
+  const nextStart = new Date(nextLesson.time_start).getTime()
+  return Math.max(0, Math.ceil((nextStart - now.getTime()) / 1000))
+}
+
 export function formatBreakDuration(minutes: number): string {
   if (minutes < 60) {
     return `${minutes} мин`
@@ -138,6 +147,16 @@ export function formatBreakDuration(minutes: number): string {
   const hours = Math.floor(minutes / 60)
   const restMinutes = minutes % 60
   return restMinutes > 0 ? `${hours} ч ${restMinutes} мин` : `${hours} ч`
+}
+
+export function formatBreakCountdown(totalSeconds: number): string {
+  const safeSeconds = Math.max(0, totalSeconds)
+  const hours = Math.floor(safeSeconds / 3600)
+  const minutes = Math.floor((safeSeconds % 3600) / 60)
+  const seconds = safeSeconds % 60
+  const pad = (value: number) => String(value).padStart(2, '0')
+
+  return hours > 0 ? `${pad(hours)}:${pad(minutes)}` : `${pad(minutes)}:${pad(seconds)}`
 }
 
 export function isScheduleItemSaved(

@@ -9,7 +9,7 @@ import PersonIcon from '@mui/icons-material/Person'
 import PlaceIcon from '@mui/icons-material/Place'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import { keyframes } from '@mui/material/styles'
+import { alpha, keyframes } from '@mui/material/styles'
 import type { PointerEvent } from 'react'
 import { formatLessonTime } from '../../shared/date'
 import { DelayedSkeleton } from '../../shared/ui/DelayedSkeleton'
@@ -17,8 +17,10 @@ import { EmptyState } from '../../shared/ui/EmptyState'
 import { useDelayedVisible } from '../../shared/ui/useDelayedVisible'
 import {
   formatAuditorium,
+  formatBreakCountdown,
   formatBreakDuration,
   getBreakDurationMinutes,
+  getBreakRemainingSeconds,
   isBreakActive,
   isLessonActive,
   type Lesson,
@@ -26,10 +28,10 @@ import {
 
 const activeLessonPulse = keyframes`
   0%, 100% {
-    background-color: rgba(86, 150, 91, 0.12);
+    background-color: var(--active-lesson-bg);
   }
   50% {
-    background-color: rgba(86, 150, 91, 0.24);
+    background-color: var(--active-lesson-bg-pulse);
   }
 `
 
@@ -40,6 +42,7 @@ type ScheduleListProps = {
   loading: boolean
   error: boolean
   success: boolean
+  emptyStateTitle: string
   onLessonClick: (lesson: Lesson) => void
   onPointerDown: (event: PointerEvent<HTMLElement>) => void
   onPointerUp: (event: PointerEvent<HTMLElement>) => void
@@ -52,6 +55,7 @@ export function ScheduleList({
   loading,
   error,
   success,
+  emptyStateTitle,
   onLessonClick,
   onPointerDown,
   onPointerUp,
@@ -81,11 +85,12 @@ export function ScheduleList({
         {loading ? <ScheduleLoading show /> : null}
         {error ? <Alert severity="error">Не удалось загрузить расписание.</Alert> : null}
         {success && visibleLessons.length === 0 ? (
-          <EmptyState icon={EventBusyIcon} title="На этот день занятий нет" sx={{ flex: 1, minHeight: 0 }} />
+          <EmptyState icon={EventBusyIcon} title={emptyStateTitle} sx={{ flex: 1, minHeight: 0 }} />
         ) : null}
         {visibleLessons.map((lesson, index) => {
           const nextLesson = visibleLessons[index + 1]
           const breakMinutes = nextLesson ? getBreakDurationMinutes(lesson, nextLesson) : 0
+          const breakRemainingSeconds = nextLesson ? getBreakRemainingSeconds(lesson, nextLesson, now) : 0
           const auditories = lesson.auditories.map(formatAuditorium).join(', ')
           const teachers = lesson.teachers?.map((teacher) => teacher.full_name).join(', ')
           const lessonType = lesson.typeObj?.name || lesson.typeObj?.abbr || 'Занятие'
@@ -120,13 +125,24 @@ export function ScheduleList({
                       color="text.secondary"
                       sx={
                         activeLesson
-                          ? {
+                          ? (theme) => ({
                               px: 1,
                               py: 0.25,
                               borderRadius: 1,
+                              '--active-lesson-bg':
+                                theme.palette.mode === 'dark'
+                                  ? alpha(theme.palette.primary.light, 0.34)
+                                  : alpha(theme.palette.primary.main, 0.12),
+                              '--active-lesson-bg-pulse':
+                                theme.palette.mode === 'dark'
+                                  ? alpha(theme.palette.primary.light, 0.5)
+                                  : alpha(theme.palette.primary.main, 0.24),
                               animation: `${activeLessonPulse} 1.8s ease-in-out infinite`,
-                              color: 'primary.dark',
-                            }
+                              color:
+                                theme.palette.mode === 'dark'
+                                  ? theme.palette.primary.contrastText
+                                  : theme.palette.primary.dark,
+                            })
                           : undefined
                       }
                     >
@@ -155,7 +171,7 @@ export function ScheduleList({
               </ButtonBase>
               {index < visibleLessons.length - 1 ? (
                 showBreaks && breakMinutes > 0 ? (
-                  <BreakRow minutes={breakMinutes} active={activeBreak} />
+                  <BreakRow minutes={breakMinutes} active={activeBreak} remainingSeconds={breakRemainingSeconds} />
                 ) : (
                   <Divider />
                 )
@@ -197,7 +213,15 @@ function ScheduleLoading({ show }: { show: boolean }) {
   )
 }
 
-function BreakRow({ minutes, active }: { minutes: number; active: boolean }) {
+type BreakRowProps = {
+  minutes: number
+  active: boolean
+  remainingSeconds?: number
+}
+
+function BreakRow({ minutes, active, remainingSeconds = 0 }: BreakRowProps) {
+  const label = active ? formatBreakCountdown(remainingSeconds) : formatBreakDuration(minutes)
+
   return (
     <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', py: 1.25 }}>
       {active ? (
@@ -209,7 +233,7 @@ function BreakRow({ minutes, active }: { minutes: number; active: boolean }) {
         <Divider sx={{ flex: 1 }} />
       )}
       <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
-        Перерыв {formatBreakDuration(minutes)}
+        Перерыв {label}
       </Typography>
       {active ? (
         <LinearProgress aria-label="Идёт перерыв" sx={{ flex: 1, height: 2, borderRadius: 1 }} />

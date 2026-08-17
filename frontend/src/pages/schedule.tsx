@@ -84,9 +84,15 @@ export function SchedulePage() {
 
     return selectedDay.lessons.filter((lesson) => !isLessonPast(lesson.time_end, now))
   }, [hidePastLessons, now, selectedDate, selectedDay])
+  const allTodayLessonsHidden =
+    hidePastLessons &&
+    selectedDate === toIsoDate(now) &&
+    Boolean(selectedDay?.lessons.length) &&
+    visibleLessons.length === 0
+  const emptyStateTitle = allTodayLessonsHidden ? 'Сегодня занятий больше нет' : 'На этот день занятий нет'
 
   useEffect(() => {
-    const intervalId = window.setInterval(() => setNow(new Date()), 60_000)
+    const intervalId = window.setInterval(() => setNow(new Date()), 1000)
     return () => window.clearInterval(intervalId)
   }, [])
 
@@ -159,6 +165,7 @@ export function SchedulePage() {
         loading={activeScheduleQuery.isPending}
         error={activeScheduleQuery.isError}
         success={activeScheduleQuery.isSuccess}
+        emptyStateTitle={emptyStateTitle}
         onLessonClick={(lesson) => {
           setSelectedLesson(lesson)
           setLessonDrawerOpen(true)
@@ -170,6 +177,7 @@ export function SchedulePage() {
         open={scheduleDrawerOpen}
         activeScheduleItem={activeScheduleItem}
         activeScheduleTitle={activeScheduleTitle}
+        activeScheduleLoading={activeScheduleQuery.isPending}
         scheduleItems={scheduleItems}
         scheduleItemQueries={scheduleItemQueries}
         scheduleSearch={scheduleSearch}

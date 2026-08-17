@@ -33,6 +33,7 @@ type ScheduleFavoritesDrawerProps = {
   open: boolean
   activeScheduleItem: ScheduleItem | null | undefined
   activeScheduleTitle: string
+  activeScheduleLoading: boolean
   scheduleItems: ScheduleItem[]
   scheduleItemQueries: SchedulePreviewQuery[]
   scheduleSearch: string
@@ -55,6 +56,7 @@ export function ScheduleFavoritesDrawer({
   open,
   activeScheduleItem,
   activeScheduleTitle,
+  activeScheduleLoading,
   scheduleItems,
   scheduleItemQueries,
   scheduleSearch,
@@ -96,7 +98,7 @@ export function ScheduleFavoritesDrawer({
           >
             <Box />
             <Typography variant="body1" noWrap>
-              {activeScheduleTitle}
+              {activeScheduleLoading ? <DelayedSkeleton show variant="text" width={128} /> : activeScheduleTitle}
             </Typography>
             <KeyboardArrowUpIcon sx={{ justifySelf: 'end' }} />
           </Button>
