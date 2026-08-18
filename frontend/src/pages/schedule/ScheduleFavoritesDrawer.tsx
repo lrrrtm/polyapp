@@ -20,6 +20,7 @@ import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
 import { useState } from 'react'
 import type { ScheduleItem } from '../../shared/api/users'
+import { ActionButton } from '../../shared/ui/ActionButton'
 import { BottomDrawer } from '../../shared/ui/BottomDrawer'
 import { DelayedSkeleton } from '../../shared/ui/DelayedSkeleton'
 import { EmptyState } from '../../shared/ui/EmptyState'
@@ -265,10 +266,8 @@ export function ScheduleFavoritesDrawer({
             >
               Отмена
             </Button>
-            <Button
-              variant="contained"
+            <ActionButton
               color="error"
-              size="large"
               disabled={!deleteCandidate}
               loading={deleteFavoritePending}
               onClick={() => {
@@ -280,10 +279,9 @@ export function ScheduleFavoritesDrawer({
                   .then(() => setDeleteCandidate(null))
                   .catch(() => undefined)
               }}
-              fullWidth
             >
               Удалить
-            </Button>
+            </ActionButton>
           </Stack>
           {deleteFavoriteError ? <Alert severity="error">Не удалось удалить из избранного.</Alert> : null}
         </Stack>

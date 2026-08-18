@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { type Group, searchGroups } from '../../shared/api/ruz'
 import { queryKeys } from '../../shared/api/queryKeys'
 import { setPrimaryGroup } from '../../shared/api/users'
+import { ActionButton } from '../../shared/ui/ActionButton'
 import { BottomDrawer } from '../../shared/ui/BottomDrawer'
 import { EmptyState } from '../../shared/ui/EmptyState'
 import { ListItemSkeleton } from '../../shared/ui/ListItemSkeleton'
@@ -143,16 +144,13 @@ export function GroupDrawer({ open, currentGroup, primaryGroupId, loading, error
             <Button variant="outlined" size="large" disabled={saveMutation.isPending} onClick={() => setConfirmOpen(false)} fullWidth>
               Отмена
             </Button>
-            <Button
-              variant="contained"
-              size="large"
+            <ActionButton
               disabled={!pendingGroup || pendingGroup.id === primaryGroupId}
               loading={saveMutation.isPending}
               onClick={() => saveMutation.mutate()}
-              fullWidth
             >
               Сохранить
-            </Button>
+            </ActionButton>
           </Stack>
           {saveMutation.isError ? <Alert severity="error">Не удалось сохранить группу. Попробуй ещё раз.</Alert> : null}
         </Stack>

@@ -17,6 +17,7 @@ import { Navigate } from 'react-router'
 import { lookupDormitoryPayment } from '../shared/api/services'
 import { useRequiredUser } from '../shared/api/useRequiredUser'
 import { queryKeys } from '../shared/api/queryKeys'
+import { ActionButton } from '../shared/ui/ActionButton'
 import { AppScreen } from '../shared/ui/AppScreen'
 import { BottomDrawer } from '../shared/ui/BottomDrawer'
 import { CenteredAlert } from '../shared/ui/CenteredAlert'
@@ -173,7 +174,7 @@ function DormitoryPaymentCard({
                 {contract}
               </Typography>
             </Stack>
-            <Box sx={{ flexShrink: 0, textAlign: 'right' }}>
+            <Box sx={{ flexShrink: 0, minWidth: 108, textAlign: 'right' }}>
               <WidgetAmount lookup={lookup} loading={loading} error={error} amountDue={amountDue} />
             </Box>
           </Stack>
@@ -256,7 +257,7 @@ function WidgetAmount({
   amountDue: number
 }) {
   if (loading) {
-    return <Skeleton variant="text" width="44%" height={40} />
+    return <Skeleton variant="text" width={108} height={36} sx={{ ml: 'auto' }} />
   }
 
   if (error) {
@@ -323,9 +324,9 @@ function ContractDrawer({
         />
         {error ? <Alert severity="error">{error}</Alert> : null}
         {lookup?.valid === false ? <Alert severity="warning">Номер договора не найден. Проверь его и попробуй снова.</Alert> : null}
-        <Button type="submit" variant="contained" size="large" disabled={!trimmedContract || loading} fullWidth>
+        <ActionButton type="submit" disabled={!trimmedContract} loading={loading}>
           Сохранить
-        </Button>
+        </ActionButton>
         <Typography variant="body2" color="text.secondary">
           Номер договора сохранится только на этом устройстве.
         </Typography>

@@ -16,6 +16,7 @@ import {
   type TelegramStatus,
 } from '../../shared/api/notifications'
 import { queryKeys } from '../../shared/api/queryKeys'
+import { ActionButton } from '../../shared/ui/ActionButton'
 import { BottomDrawer } from '../../shared/ui/BottomDrawer'
 
 type TelegramDrawerProps = {
@@ -154,16 +155,13 @@ export function TelegramDrawer({ open, status, loading, error, onClose }: Telegr
                 >
                   Отмена
                 </Button>
-                <Button
-                  variant="contained"
+                <ActionButton
                   color="error"
-                  size="large"
                   loading={disconnectMutation.isPending}
                   onClick={() => disconnectMutation.mutate()}
-                  fullWidth
                 >
                   Отвязать
-                </Button>
+                </ActionButton>
               </Stack>
             </Stack>
           </BottomDrawer>
@@ -178,16 +176,13 @@ export function TelegramDrawer({ open, status, loading, error, onClose }: Telegr
         <Typography variant="body1">
           Подключи Telegram, чтобы получать выбранные уведомления об изменениях расписания.
         </Typography>
-        <Button
-          variant="contained"
-          size="large"
+        <ActionButton
           loading={linkMutation.isPending}
           disabled={loading}
           onClick={() => linkMutation.mutate()}
-          fullWidth
         >
           Подключить Telegram
-        </Button>
+        </ActionButton>
         {error ? <Alert severity="error">Не удалось загрузить настройки уведомлений.</Alert> : null}
         {linkMutation.isError ? <Alert severity="error">{linkMutation.error.message}</Alert> : null}
       </Stack>

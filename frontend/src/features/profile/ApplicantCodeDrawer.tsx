@@ -1,4 +1,3 @@
-import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -6,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { setApplicantCode } from '../../shared/api/admissions'
 import { queryKeys } from '../../shared/api/queryKeys'
 import { setUserProfileApplicantCode, type UserProfile } from '../../shared/api/users'
+import { ActionButton } from '../../shared/ui/ActionButton'
 import { BottomDrawer } from '../../shared/ui/BottomDrawer'
 
 type ApplicantCodeDrawerProps = {
@@ -54,16 +54,13 @@ export function ApplicantCodeDrawer({ open, currentCode, onClose }: ApplicantCod
             setCode(event.target.value.replace(/\s/g, ''))
           }}
         />
-        <Button
-          variant="contained"
-          size="large"
+        <ActionButton
           disabled={!canSaveCode || trimmedCode === currentCode}
           loading={saveMutation.isPending}
           onClick={() => saveMutation.mutate()}
-          fullWidth
         >
           Сохранить
-        </Button>
+        </ActionButton>
       </Stack>
     </BottomDrawer>
   )

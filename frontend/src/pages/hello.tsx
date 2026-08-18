@@ -16,6 +16,7 @@ import { setApplicantCode } from '../shared/api/admissions'
 import { queryKeys } from '../shared/api/queryKeys'
 import { type Faculty, type Group, getFaculties, getGroupsByFaculty } from '../shared/api/ruz'
 import { createCurrentUser, getSessionStatus, setPrimaryGroup, setUserProfileApplicantCode, type UserProfile } from '../shared/api/users'
+import { ActionButton } from '../shared/ui/ActionButton'
 import { AppAutocomplete } from '../shared/ui/AppAutocomplete'
 import { ApplicantCodeStep } from '../shared/ui/ApplicantCodeStep'
 import { PageSkeleton } from '../shared/ui/PageSkeleton'
@@ -164,16 +165,13 @@ export function HelloPage() {
                       Это супер-апп политеха, в котором ты сможешь удобно просматривать расписание, отслеживать своё положение при поступлении и делать много разного. Начнём?
                     </Typography>
                   </Stack>
-                  <Button
-                    variant="contained"
-                    size="large"
-                    fullWidth
+                  <ActionButton
                     onClick={() => createUserMutation.mutate()}
                     loading={createUserMutation.isPending}
                     sx={{ py: 1.5 }}
                   >
                     Вперёд
-                  </Button>
+                  </ActionButton>
                   {createUserMutation.isError ? (
                     <Alert severity="error">Не удалось начать работу. Попробуй ещё раз.</Alert>
                   ) : null}
@@ -239,17 +237,14 @@ export function HelloPage() {
                       }}
                     />
                     <Stack spacing={1.5}>
-                      <Button
-                        variant="contained"
-                        size="large"
-                        fullWidth
+                      <ActionButton
                         disabled={group === null}
                         loading={saveMutation.isPending}
                         onClick={() => saveMutation.mutate()}
                         sx={{ py: 1.5 }}
                       >
                         Далее
-                      </Button>
+                      </ActionButton>
                       <Button
                         variant="text"
                         size="large"

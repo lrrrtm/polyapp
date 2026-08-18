@@ -1,6 +1,5 @@
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Container from '@mui/material/Container'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
@@ -11,6 +10,7 @@ import { queryKeys } from '../shared/api/queryKeys'
 import { type Faculty, type Group, getFaculties, getGroupsByFaculty } from '../shared/api/ruz'
 import { useRequiredUser } from '../shared/api/useRequiredUser'
 import { setPrimaryGroup } from '../shared/api/users'
+import { ActionButton } from '../shared/ui/ActionButton'
 import { AppAutocomplete } from '../shared/ui/AppAutocomplete'
 import { CenteredAlert } from '../shared/ui/CenteredAlert'
 import { PageSkeleton } from '../shared/ui/PageSkeleton'
@@ -115,17 +115,14 @@ export function RegisterPage() {
                 setGroup(value)
               }}
             />
-            <Button
-              variant="contained"
-              size="large"
-              fullWidth
+            <ActionButton
               disabled={group === null}
               loading={saveMutation.isPending}
               onClick={() => saveMutation.mutate()}
               sx={{ py: 1.5 }}
             >
               Сохранить
-            </Button>
+            </ActionButton>
           </Stack>
           {saveMutation.isError ? (
             <Alert severity="error">Не удалось сохранить группу. Попробуй ещё раз.</Alert>

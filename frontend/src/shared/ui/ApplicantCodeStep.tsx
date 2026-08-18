@@ -2,6 +2,7 @@ import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import { ActionButton } from './ActionButton'
 
 type ApplicantCodeStepProps = {
   code: string
@@ -48,17 +49,14 @@ export function ApplicantCodeStep({
           onChange={(event) => onCodeChange(event.target.value.replace(/\s/g, ''))}
         />
         <Stack spacing={1.5}>
-          <Button
-            variant="contained"
-            size="large"
-            fullWidth
+          <ActionButton
             disabled={!canContinue}
             loading={isSaving}
             onClick={onContinue}
             sx={{ py: 1.5 }}
           >
             Далее
-          </Button>
+          </ActionButton>
           {onSkip ? (
             <Button
               variant="text"
