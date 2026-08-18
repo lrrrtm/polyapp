@@ -1,4 +1,5 @@
 from datetime import date, datetime, time, timezone
+from typing import Literal
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -20,6 +21,12 @@ def to_utc_datetime(day: date, value: datetime | str | None) -> datetime | None:
         if value.tzinfo is None:
             value = value.replace(tzinfo=MOSCOW_TZ)
         return value.astimezone(timezone.utc)
+
+    if "T" in value:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=MOSCOW_TZ)
+        return parsed.astimezone(timezone.utc)
 
     lesson_time = time.fromisoformat(value)
     return datetime.combine(day, lesson_time, tzinfo=MOSCOW_TZ).astimezone(timezone.utc)
@@ -148,10 +155,18 @@ class Week(RuzModel):
         return parse_ruz_date(value)
 
 
+class ScheduleMeta(RuzModel):
+    source: Literal["live", "cache"]
+    is_stale: bool = False
+    fetched_at: datetime | None = None
+    failed_refresh_at: datetime | None = None
+
+
 class GroupSchedule(RuzModel):
     week: Week
     group: Group
     days: list[Day] = Field(default_factory=list)
+    meta: ScheduleMeta | None = None
 
 
 class TeacherSchedule(RuzModel):

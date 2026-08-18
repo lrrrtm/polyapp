@@ -97,6 +97,10 @@ export function SchedulePage() {
     Boolean(selectedDay?.lessons.length) &&
     visibleLessons.length === 0
   const emptyStateTitle = allTodayLessonsHidden ? 'Сегодня занятий больше нет' : 'На этот день занятий нет'
+  const scheduleStale =
+    activeScheduleQuery.data !== undefined &&
+    'meta' in activeScheduleQuery.data &&
+    activeScheduleQuery.data.meta?.is_stale === true
 
   useEffect(() => {
     const intervalId = window.setInterval(() => setNow(new Date()), 1000)
@@ -173,6 +177,7 @@ export function SchedulePage() {
         loading={activeScheduleQuery.isPending}
         error={activeScheduleQuery.isError}
         success={activeScheduleQuery.isSuccess}
+        stale={scheduleStale}
         emptyStateTitle={emptyStateTitle}
         onLessonClick={(lesson) => {
           setSelectedLesson(lesson)

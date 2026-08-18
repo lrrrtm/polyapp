@@ -1,12 +1,15 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_ruz_client
 from app.api.errors import ApiError, ApiErrorCode, problem_responses
 from app.api.v1.mock_schedules import get_mock_group_schedule
 from app.clients.ruz import RuzApiError, RuzClient, RuzNotFoundError
+from app.db.session import get_db
 from app.schemas.ruz import Faculty, FacultyGroups, Group, GroupSchedule, Teacher, TeacherSchedule
+from app.schedules.service import get_group_schedule_cached_or_live
 
 router = APIRouter(tags=["ruz"])
 
@@ -96,13 +99,14 @@ async def get_group_schedule(
     group_id: int,
     schedule_date: date | None = Query(default=None, alias="date"),
     ruz: RuzClient = Depends(get_ruz_client),
+    db: AsyncSession = Depends(get_db),
 ) -> GroupSchedule:
     mock_schedule = get_mock_group_schedule(group_id, schedule_date)
     if mock_schedule:
         return mock_schedule
 
     try:
-        return await ruz.get_group_schedule(group_id, schedule_date)
+        return await get_group_schedule_cached_or_live(db, ruz, group_id, schedule_date)
     except RuzNotFoundError as error:
         raise ruz_resource_not_found("group", group_id) from error
     except RuzApiError as error:

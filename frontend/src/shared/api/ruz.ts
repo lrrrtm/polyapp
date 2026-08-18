@@ -76,6 +76,13 @@ const weekSchema = z.object({
   is_odd: z.boolean(),
 })
 
+const scheduleMetaSchema = z.object({
+  source: z.enum(['live', 'cache']),
+  is_stale: z.boolean(),
+  fetched_at: z.string().nullable().optional(),
+  failed_refresh_at: z.string().nullable().optional(),
+})
+
 const facultyGroupsSchema = z.object({
   faculty: facultySchema,
   groups: z.array(groupSchema),
@@ -85,6 +92,7 @@ const groupScheduleSchema = z.object({
   week: weekSchema,
   group: groupSchema,
   days: z.array(daySchema),
+  meta: scheduleMetaSchema.nullable().optional(),
 })
 
 const teacherScheduleSchema = z.object({

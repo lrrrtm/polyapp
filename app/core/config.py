@@ -25,6 +25,12 @@ class Settings(BaseSettings):
         validation_alias="ADMISSIONS_REFRESH_INTERVAL_SECONDS",
     )
     admissions_refresh_enabled: bool = Field(default=True, validation_alias="ADMISSIONS_REFRESH_ENABLED")
+    schedule_refresh_interval_seconds: int = Field(
+        default=15 * 60,
+        validation_alias="SCHEDULE_REFRESH_INTERVAL_SECONDS",
+    )
+    schedule_refresh_enabled: bool = Field(default=True, validation_alias="SCHEDULE_REFRESH_ENABLED")
+    schedule_refresh_concurrency: int = Field(default=4, validation_alias="SCHEDULE_REFRESH_CONCURRENCY")
     user_cookie_name: str = Field(default="polytech_user", validation_alias="USER_COOKIE_NAME")
     user_cookie_max_age: int = Field(default=60 * 60 * 24 * 365, validation_alias="USER_COOKIE_MAX_AGE")
     user_cookie_secure: bool = Field(default=False, validation_alias="USER_COOKIE_SECURE")

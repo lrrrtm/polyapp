@@ -42,6 +42,7 @@ type ScheduleListProps = {
   loading: boolean
   error: boolean
   success: boolean
+  stale: boolean
   emptyStateTitle: string
   onLessonClick: (lesson: Lesson) => void
   onPointerDown: (event: PointerEvent<HTMLElement>) => void
@@ -55,6 +56,7 @@ export function ScheduleList({
   loading,
   error,
   success,
+  stale,
   emptyStateTitle,
   onLessonClick,
   onPointerDown,
@@ -84,6 +86,11 @@ export function ScheduleList({
       <Stack sx={{ flex: 1, touchAction: 'pan-y' }}>
         {loading ? <ScheduleLoading show /> : null}
         {error ? <Alert severity="error">Не удалось загрузить расписание.</Alert> : null}
+        {success && stale ? (
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            Сервис расписания временно недоступен. Показаны последние сохранённые данные.
+          </Alert>
+        ) : null}
         {success && visibleLessons.length === 0 ? (
           <EmptyState icon={EventBusyIcon} title={emptyStateTitle} sx={{ flex: 1, minHeight: 0 }} />
         ) : null}
