@@ -251,15 +251,10 @@ export function ScheduleFavoritesDrawer({
             setDeleteCandidate(null)
           }
         }}
-        title="Удалить из избранного?"
+        title="Удаление из избранного"
       >
         <Stack spacing={2.5} sx={{ px: 3, pt: 1, pb: 4 }}>
-          <Stack spacing={0.75}>
-            <Typography variant="body1">Это расписание исчезнет из списка избранного.</Typography>
-            <Typography variant="body2" color="text.secondary">
-              {deleteCandidate?.title ?? ''}
-            </Typography>
-          </Stack>
+          <Typography variant="body1">{getDeleteFavoriteQuestion(deleteCandidate)}</Typography>
           <Stack direction="row" spacing={1.25}>
             <Button
               variant="outlined"
@@ -295,6 +290,15 @@ export function ScheduleFavoritesDrawer({
       </BottomDrawer>
     </>
   )
+}
+
+function getDeleteFavoriteQuestion(candidate: DeleteCandidate | null) {
+  if (!candidate) {
+    return 'Удалить расписание из избранного?'
+  }
+
+  const itemLabel = candidate.item.item_type === 'teacher' ? 'преподавателя' : 'группы'
+  return `Удалить расписание ${itemLabel} ${candidate.title} из избранного?`
 }
 
 function SearchResultsLoading({ show }: { show: boolean }) {

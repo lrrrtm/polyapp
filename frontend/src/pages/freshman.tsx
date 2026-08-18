@@ -19,6 +19,7 @@ import { CenteredAlert } from '../shared/ui/CenteredAlert'
 import { DelayedSkeleton } from '../shared/ui/DelayedSkeleton'
 import { EmptyState } from '../shared/ui/EmptyState'
 import { PageSkeleton } from '../shared/ui/PageSkeleton'
+import { useDelayedVisible } from '../shared/ui/useDelayedVisible'
 
 export function FreshmanPage() {
   const [applicantDrawerOpen, setApplicantDrawerOpen] = useState(false)
@@ -77,18 +78,24 @@ export function FreshmanPage() {
 }
 
 function AdmissionsSkeleton({ show }: { show: boolean }) {
+  const visible = useDelayedVisible(show)
+
+  if (!visible) {
+    return null
+  }
+
   return (
     <Stack spacing={2}>
       <Card variant="outlined">
         <CardContent>
           <Stack direction="row" spacing={2} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
             <Stack spacing={0.5} sx={{ flex: 1 }}>
-              <DelayedSkeleton show={show} variant="text" width={72} />
-              <DelayedSkeleton show={show} variant="text" width={104} />
+              <DelayedSkeleton show={show} delay={0} variant="text" width={72} />
+              <DelayedSkeleton show={show} delay={0} variant="text" width={104} />
             </Stack>
             <Stack spacing={0.5} sx={{ alignItems: 'flex-end', flex: 1 }}>
-              <DelayedSkeleton show={show} variant="text" width={64} />
-              <DelayedSkeleton show={show} variant="rounded" width={84} height={24} />
+              <DelayedSkeleton show={show} delay={0} variant="text" width={64} />
+              <DelayedSkeleton show={show} delay={0} variant="rounded" width={84} height={24} />
             </Stack>
           </Stack>
         </CardContent>
@@ -98,10 +105,10 @@ function AdmissionsSkeleton({ show }: { show: boolean }) {
           <CardContent>
             <Stack spacing={2}>
               <Stack spacing={1}>
-                <DelayedSkeleton show={show} variant="text" width="86%" height={28} />
+                <DelayedSkeleton show={show} delay={0} variant="text" width="86%" height={28} />
                 <Stack direction="row" spacing={1}>
-                  <DelayedSkeleton show={show} variant="rounded" width={92} height={24} />
-                  <DelayedSkeleton show={show} variant="rounded" width={120} height={24} />
+                  <DelayedSkeleton show={show} delay={0} variant="rounded" width={92} height={24} />
+                  <DelayedSkeleton show={show} delay={0} variant="rounded" width={120} height={24} />
                 </Stack>
               </Stack>
               <Divider />
@@ -121,8 +128,8 @@ function AdmissionsSkeleton({ show }: { show: boolean }) {
 function MetricSkeleton({ show }: { show: boolean }) {
   return (
     <Stack spacing={0.5} sx={{ minWidth: 0 }}>
-      <DelayedSkeleton show={show} variant="text" width={48} height={32} />
-      <DelayedSkeleton show={show} variant="text" width={64} />
+      <DelayedSkeleton show={show} delay={0} variant="text" width={48} height={32} />
+      <DelayedSkeleton show={show} delay={0} variant="text" width={64} />
     </Stack>
   )
 }
