@@ -117,10 +117,14 @@ jobs:
 
     steps:
       - name: Configure SSH
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p ~/.ssh
-          echo "${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          printf '%s' "${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}" | perl -pe 's/\\n/\n/g' | tr -d '\r' > ~/.ssh/deploy_key
+          printf '\n' >> ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+          ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null
           ssh-keyscan -p "$DEPLOY_SSH_PORT" "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Deploy on server
