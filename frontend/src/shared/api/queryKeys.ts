@@ -15,4 +15,5 @@ export const queryKeys = {
   admissions: () => ['admissions'] as const,
   applicantCode: () => ['applicant-code'] as const,
   telegramStatus: () => ['telegram-status'] as const,
+  dormitoryPayment: (contract: string | null) => ['dormitory-payment', contract] as const,
 }

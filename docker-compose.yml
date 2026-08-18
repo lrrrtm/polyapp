@@ -35,6 +35,8 @@ services:
       DB_ECHO: ${DB_ECHO:-false}
       RUZ_BASE_URL: ${RUZ_BASE_URL:-https://ruz.spbstu.ru/api/v1/ruz/}
       RUZ_TIMEOUT: ${RUZ_TIMEOUT:-10.0}
+      SPBSTU_PAY_BASE_URL: ${SPBSTU_PAY_BASE_URL:-https://pay.spbstu.ru}
+      SPBSTU_PAY_TIMEOUT: ${SPBSTU_PAY_TIMEOUT:-10.0}
       SPBSTU_BASE_URL: ${SPBSTU_BASE_URL:-https://my.spbstu.ru}
       SPBSTU_TIMEOUT: ${SPBSTU_TIMEOUT:-30.0}
       SPBSTU_CONCURRENCY: ${SPBSTU_CONCURRENCY:-5}

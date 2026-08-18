@@ -19,6 +19,8 @@ from app.db.session import SessionLocal
 from app.schedules.router import router as schedules_router
 from app.schedules.service import refresh_saved_group_schedules
 from app.notifications.router import router as notifications_router
+from app.services.client import SpbstuPayClient
+from app.services.router import router as services_router
 from app.users.router import router as users_router
 
 logger = logging.getLogger(__name__)
@@ -37,9 +39,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         base_url=settings.ruz_base_url,
         timeout=httpx.Timeout(settings.ruz_timeout),
         verify=truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT),
-    ) as http:
-        ruz_client = RuzClient(http)
+    ) as ruz_http, httpx.AsyncClient(
+        base_url=settings.spbstu_pay_base_url,
+        timeout=httpx.Timeout(settings.spbstu_pay_timeout),
+        verify=truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT),
+    ) as pay_http:
+        ruz_client = RuzClient(ruz_http)
         app.state.ruz_client = ruz_client
+        app.state.spbstu_pay_client = SpbstuPayClient(pay_http)
         if settings.schedule_refresh_enabled:
             schedule_refresh_task = asyncio.create_task(run_schedule_refresh_loop(schedule_refresh_lock, ruz_client))
         try:
@@ -102,6 +109,7 @@ def create_app() -> FastAPI:
     app.include_router(admissions_router, prefix=settings.api_v1_prefix)
     app.include_router(schedules_router, prefix=settings.api_v1_prefix)
     app.include_router(notifications_router, prefix=settings.api_v1_prefix)
+    app.include_router(services_router, prefix=settings.api_v1_prefix)
 
     @app.get("/health")
     async def health() -> dict[str, str]:

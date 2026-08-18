@@ -3,6 +3,7 @@ import { HelloPage } from '../pages/hello'
 import { RegisterPage } from '../pages/register'
 import { RootPage } from '../pages/root'
 import { SchedulePage } from '../pages/schedule'
+import { ServicesPage } from '../pages/services'
 import { SettingsPage } from '../pages/settings'
 import { FreshmanPage } from '../pages/freshman'
 import { TabsLayout } from '../shared/ui/TabsLayout'
@@ -30,6 +31,10 @@ export const router = createBrowserRouter([
       {
         path: '/schedule',
         element: <SchedulePage />,
+      },
+      {
+        path: '/services',
+        element: <ServicesPage />,
       },
       {
         path: '/settings',

@@ -1,4 +1,5 @@
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
+import PaymentsIcon from '@mui/icons-material/Payments'
 import SchoolIcon from '@mui/icons-material/School'
 import SettingsIcon from '@mui/icons-material/Settings'
 import AppBar from '@mui/material/AppBar'
@@ -18,6 +19,11 @@ const navigationItems = [
     label: 'Расписание',
     value: '/schedule',
     icon: <CalendarMonthIcon />,
+  },
+  {
+    label: 'Сервисы',
+    value: '/services',
+    icon: <PaymentsIcon />,
   },
   {
     label: 'Настройки',
