@@ -32,11 +32,19 @@ export function FreshmanPage() {
   })
 
   if (user.status === 'loading') {
-    return <PageSkeleton show />
+    return (
+      <AppScreen>
+        <PageSkeleton show />
+      </AppScreen>
+    )
   }
 
   if (user.status === 'error') {
-    return <CenteredAlert message={user.errorMessage} />
+    return (
+      <AppScreen>
+        <CenteredAlert message={user.errorMessage} />
+      </AppScreen>
+    )
   }
 
   if (user.status === 'anonymous') {

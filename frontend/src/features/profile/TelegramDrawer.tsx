@@ -79,6 +79,14 @@ export function TelegramDrawer({ open, status, loading, error, onClose }: Telegr
     return (
       <BottomDrawer open={open} onClose={onClose} title="Уведомления" height="78vh">
         <Stack sx={{ height: 1, minHeight: 0 }}>
+          <Stack spacing={1.5} sx={{ px: 3, pt: 0, pb: 1.5 }}>
+            <Typography variant="body2" color="text.secondary">
+              Будут приходить {formatTelegramAccount(connectedAccount)}
+            </Typography>
+            {error ? <Alert severity="error">Не удалось загрузить настройки уведомлений.</Alert> : null}
+            {settingsMutation.isError ? <Alert severity="error">Не удалось сохранить настройки уведомлений.</Alert> : null}
+            {disconnectMutation.isError ? <Alert severity="error">Не удалось отключить Telegram.</Alert> : null}
+          </Stack>
           <List sx={{ flex: 1, minHeight: 0, overflowY: 'auto', px: 3, pb: 2 }}>
             <NotificationSwitchRow
               title="Новые пары"
@@ -120,13 +128,7 @@ export function TelegramDrawer({ open, status, loading, error, onClose }: Telegr
               onChange={(checked) => updateSetting('teacher_changed_enabled', checked)}
             />
           </List>
-          <Stack spacing={1.5} sx={{ px: 3, pb: 4, pt: 1 }}>
-            <Typography variant="body2" color="text.secondary">
-              Telegram подключён: {formatTelegramAccount(connectedAccount)}
-            </Typography>
-            {error ? <Alert severity="error">Не удалось загрузить настройки уведомлений.</Alert> : null}
-            {settingsMutation.isError ? <Alert severity="error">Не удалось сохранить настройки уведомлений.</Alert> : null}
-            {disconnectMutation.isError ? <Alert severity="error">Не удалось отключить Telegram.</Alert> : null}
+          <Stack sx={{ px: 3, pb: 4, pt: 1 }}>
             <Button
               variant="outlined"
               color="error"
@@ -135,7 +137,7 @@ export function TelegramDrawer({ open, status, loading, error, onClose }: Telegr
               onClick={() => setDisconnectConfirmOpen(true)}
               fullWidth
             >
-              Отвязать
+              Отвязать аккаунт
             </Button>
           </Stack>
           <BottomDrawer
