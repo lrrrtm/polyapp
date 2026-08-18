@@ -96,6 +96,18 @@ class Lesson(RuzModel):
     webinar_url: str = ""
     lms_url: str = ""
 
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_nullable_lists(cls, data: object) -> object:
+        if not isinstance(data, dict):
+            return data
+
+        data = data.copy()
+        for field in ("groups", "teachers", "auditories"):
+            if data.get(field) is None:
+                data[field] = []
+        return data
+
 
 class Day(RuzModel):
     weekday: int

@@ -181,6 +181,44 @@ async def test_group_schedule_normalizes_dates_and_moscow_times_to_utc() -> None
 
 @pytest.mark.asyncio
 @respx.mock
+async def test_group_schedule_normalizes_nullable_lesson_lists() -> None:
+    respx.get(f"{BASE_URL}scheduler/44302").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "week": {"date_start": "2026.08.31", "date_end": "2026.09.06", "is_odd": True},
+                "group": {"id": 44302, "name": "44302"},
+                "days": [
+                    {
+                        "weekday": 3,
+                        "date": "2026.09.02",
+                        "lessons": [
+                            {
+                                "subject": "Лабораторный практикум по системам мобильной связи",
+                                "time_start": "10:00",
+                                "time_end": "11:30",
+                                "groups": None,
+                                "teachers": None,
+                                "auditories": None,
+                            }
+                        ],
+                    }
+                ],
+            },
+        )
+    )
+
+    async with httpx.AsyncClient(base_url=BASE_URL) as http:
+        schedule = await RuzClient(http).get_group_schedule(44302, date(2026, 8, 31))
+
+    lesson = schedule.days[0].lessons[0]
+    assert lesson.groups == []
+    assert lesson.teachers == []
+    assert lesson.auditories == []
+
+
+@pytest.mark.asyncio
+@respx.mock
 async def test_get_teacher_schedule_sends_iso_date() -> None:
     route = respx.get(f"{BASE_URL}teachers/9833/scheduler").mock(
         return_value=httpx.Response(
