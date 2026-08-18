@@ -18,6 +18,7 @@ from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.schedules.router import router as schedules_router
 from app.schedules.service import refresh_saved_group_schedules
+from app.notifications.router import router as notifications_router
 from app.users.router import router as users_router
 
 logger = logging.getLogger(__name__)
@@ -100,6 +101,7 @@ def create_app() -> FastAPI:
     app.include_router(buildings_router, prefix=settings.api_v1_prefix)
     app.include_router(admissions_router, prefix=settings.api_v1_prefix)
     app.include_router(schedules_router, prefix=settings.api_v1_prefix)
+    app.include_router(notifications_router, prefix=settings.api_v1_prefix)
 
     @app.get("/health")
     async def health() -> dict[str, str]:

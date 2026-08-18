@@ -14,4 +14,5 @@ export const queryKeys = {
   teachersSearch: (query: string) => ['teachers-search', query] as const,
   admissions: () => ['admissions'] as const,
   applicantCode: () => ['applicant-code'] as const,
+  telegramStatus: () => ['telegram-status'] as const,
 }

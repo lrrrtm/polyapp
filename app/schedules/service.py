@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.clients.ruz import RuzApiError, RuzClient, RuzNotFoundError
 from app.core.config import Settings
 from app.schemas.ruz import GroupSchedule, ScheduleMeta
+from app.notifications.service import enqueue_schedule_change_notifications
 from app.schedules.diff import diff_schedules, schedule_hash, schedule_payload
 from app.schedules.models import ScheduleCache, ScheduleChangeEvent
 from app.users.models import ScheduleItemType, User, UserScheduleItem
@@ -112,17 +113,18 @@ async def save_group_schedule_cache(db: AsyncSession, schedule: GroupSchedule) -
     if cache.payload_hash != payload_hash:
         changes = diff_schedules(cache.payload, payload)
         if changes:
-            db.add(
-                ScheduleChangeEvent(
-                    item_type=ScheduleItemType.GROUP.value,
-                    ruz_id=schedule.group.id,
-                    week_start=week_start,
-                    detected_at=now,
-                    old_hash=cache.payload_hash,
-                    new_hash=payload_hash,
-                    changes=changes,
-                )
+            event = ScheduleChangeEvent(
+                item_type=ScheduleItemType.GROUP.value,
+                ruz_id=schedule.group.id,
+                week_start=week_start,
+                detected_at=now,
+                old_hash=cache.payload_hash,
+                new_hash=payload_hash,
+                changes=changes,
             )
+            db.add(event)
+            await db.flush()
+            await enqueue_schedule_change_notifications(db, event, group_name=schedule.group.name)
 
     cache.payload = payload
     cache.payload_hash = payload_hash

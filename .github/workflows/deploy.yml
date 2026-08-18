@@ -135,7 +135,7 @@ jobs:
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
             git fetch --prune origin main
             git reset --hard origin/main
-            docker compose pull api frontend
-            docker compose up -d --no-build db api frontend
+            docker compose pull api frontend bot
+            docker compose up -d --no-build db api frontend bot
             docker image prune -f
           EOF

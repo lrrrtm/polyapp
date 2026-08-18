@@ -16,6 +16,8 @@ import { type ThemePreference, useThemePreference } from '../app/theme-preferenc
 import { useUserPreferences } from '../app/user-preferences-context'
 import { ApplicantCodeDrawer } from '../features/profile/ApplicantCodeDrawer'
 import { GroupDrawer } from '../features/profile/GroupDrawer'
+import { TelegramDrawer } from '../features/profile/TelegramDrawer'
+import { getTelegramStatus } from '../shared/api/notifications'
 import { queryKeys } from '../shared/api/queryKeys'
 import { type Group, getGroupSchedule } from '../shared/api/ruz'
 import { useRequiredUser } from '../shared/api/useRequiredUser'
@@ -38,6 +40,7 @@ export function SettingsPage() {
   const [themeDrawerOpen, setThemeDrawerOpen] = useState(false)
   const [applicantDrawerOpen, setApplicantDrawerOpen] = useState(false)
   const [groupDrawerOpen, setGroupDrawerOpen] = useState(false)
+  const [telegramDrawerOpen, setTelegramDrawerOpen] = useState(false)
   const currentWeekStartDate = useMemo(() => getWeekStartDate(toIsoDate(new Date())), [])
   const user = useRequiredUser()
   const primaryGroupId = user.status === 'ready' ? user.profile.primary_group?.ruz_id : undefined
@@ -45,6 +48,11 @@ export function SettingsPage() {
     queryKey: queryKeys.schedule('group', primaryGroupId, currentWeekStartDate),
     queryFn: () => getGroupSchedule(primaryGroupId ?? 0, currentWeekStartDate),
     enabled: primaryGroupId !== undefined,
+  })
+  const telegramQuery = useQuery({
+    queryKey: queryKeys.telegramStatus(),
+    queryFn: getTelegramStatus,
+    enabled: user.status === 'ready',
   })
   const currentGroup = currentGroupQuery.data?.group ?? (primaryGroupId ? createGroupFallback(primaryGroupId) : null)
 
@@ -61,6 +69,15 @@ export function SettingsPage() {
   }
 
   const applicantCodeSubtitle = user.profile.applicant_code?.code ?? 'Не указан'
+  const telegramStatus = telegramQuery.data
+  const telegramConnected = telegramStatus?.connected === true
+  const telegramSubtitle = telegramQuery.isPending ? (
+    <DelayedSkeleton show variant="text" width={104} />
+  ) : telegramConnected ? (
+    'Telegram подключён'
+  ) : (
+    'Telegram не подключён'
+  )
   const currentGroupSubtitle = currentGroupQuery.isPending && primaryGroupId ? (
     <DelayedSkeleton show variant="text" width={104} />
   ) : (
@@ -113,6 +130,12 @@ export function SettingsPage() {
                 title="Учебная группа"
                 subtitle={currentGroupSubtitle}
                 onClick={() => setGroupDrawerOpen(true)}
+              />
+              <Divider component="li" />
+              <SettingsRow
+                title="Уведомления"
+                subtitle={telegramSubtitle}
+                onClick={() => setTelegramDrawerOpen(true)}
               />
               <Divider component="li" />
               <Stack
@@ -194,6 +217,13 @@ export function SettingsPage() {
         loading={currentGroupQuery.isFetching}
         error={currentGroupQuery.isError}
         onSaved={(group) => setActiveScheduleItem({ item_type: 'group', ruz_id: group.id })}
+      />
+      <TelegramDrawer
+        open={telegramDrawerOpen}
+        onClose={() => setTelegramDrawerOpen(false)}
+        status={telegramStatus}
+        loading={telegramQuery.isPending}
+        error={telegramQuery.isError}
       />
     </AppScreen>
   )

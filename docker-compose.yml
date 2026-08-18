@@ -31,6 +31,7 @@ services:
       - "${API_HOST_PORT:?API_HOST_PORT is required}:8000"
     environment:
       DATABASE_URL: ${API_DATABASE_URL:?API_DATABASE_URL is required}
+      RUN_MIGRATIONS: "true"
       DB_ECHO: ${DB_ECHO:-false}
       RUZ_BASE_URL: ${RUZ_BASE_URL:-https://ruz.spbstu.ru/api/v1/ruz/}
       RUZ_TIMEOUT: ${RUZ_TIMEOUT:-10.0}
@@ -43,6 +44,11 @@ services:
       SCHEDULE_REFRESH_INTERVAL_SECONDS: ${SCHEDULE_REFRESH_INTERVAL_SECONDS:-900}
       SCHEDULE_REFRESH_ENABLED: ${SCHEDULE_REFRESH_ENABLED:-true}
       SCHEDULE_REFRESH_CONCURRENCY: ${SCHEDULE_REFRESH_CONCURRENCY:-4}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      TELEGRAM_BOT_ENABLED: ${TELEGRAM_BOT_ENABLED:-false}
+      TELEGRAM_OUTBOX_POLL_INTERVAL_SECONDS: ${TELEGRAM_OUTBOX_POLL_INTERVAL_SECONDS:-5}
+      TELEGRAM_SEND_CONCURRENCY: ${TELEGRAM_SEND_CONCURRENCY:-4}
       USER_COOKIE_NAME: ${USER_COOKIE_NAME:-polytech_user}
       USER_COOKIE_MAX_AGE: ${USER_COOKIE_MAX_AGE:-31536000}
       USER_COOKIE_SECURE: ${USER_COOKIE_SECURE:-false}
@@ -52,6 +58,27 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: ${API_IMAGE_NAME:?API_IMAGE_NAME is required}
+    container_name: ${BOT_CONTAINER_NAME:-polytech-bot}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${API_DATABASE_URL:?API_DATABASE_URL is required}
+      RUN_MIGRATIONS: "false"
+      DB_ECHO: ${DB_ECHO:-false}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      TELEGRAM_BOT_ENABLED: ${TELEGRAM_BOT_ENABLED:-false}
+      TELEGRAM_OUTBOX_POLL_INTERVAL_SECONDS: ${TELEGRAM_OUTBOX_POLL_INTERVAL_SECONDS:-5}
+      TELEGRAM_SEND_CONCURRENCY: ${TELEGRAM_SEND_CONCURRENCY:-4}
+    command: ["uv", "run", "--no-sync", "python", "-m", "app.bot.main"]
 
   frontend:
     build:
