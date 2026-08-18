@@ -35,6 +35,12 @@ async def get_group_schedule_cached_or_live(
     schedule_date: date | None,
 ) -> GroupSchedule:
     week_start = week_start_for(schedule_date or date.today())
+    saved_group = await is_group_saved(db, group_id)
+    if saved_group:
+        cached = await get_cached_group_schedule(db, group_id, week_start)
+        if cached:
+            return cached
+
     try:
         schedule = await ruz.get_group_schedule(group_id, schedule_date)
     except RuzNotFoundError:
@@ -47,10 +53,12 @@ async def get_group_schedule_cached_or_live(
                 return cached
         raise
 
-    if await is_group_saved(db, group_id):
-        await save_group_schedule_cache(db, schedule)
+    fetched_at = datetime.now(UTC)
+    if saved_group:
+        cache = await save_group_schedule_cache(db, schedule)
+        fetched_at = cache.fetched_at
 
-    schedule.meta = ScheduleMeta(source="live", is_stale=False)
+    schedule.meta = ScheduleMeta(source="live", is_stale=False, fetched_at=fetched_at)
     return schedule
 
 
@@ -59,20 +67,25 @@ async def get_cached_group_schedule(
     group_id: int,
     week_start: date,
     *,
-    stale: bool,
+    stale: bool | None = None,
 ) -> GroupSchedule | None:
     cache = await get_cache_row(db, group_id, week_start)
     if not cache:
         return None
 
+    is_stale = stale if stale is not None else is_cache_stale(cache)
     schedule = GroupSchedule.model_validate(cache.payload)
     schedule.meta = ScheduleMeta(
         source="cache",
-        is_stale=stale,
+        is_stale=is_stale,
         fetched_at=cache.fetched_at,
         failed_refresh_at=cache.last_refresh_failed_at,
     )
     return schedule
+
+
+def is_cache_stale(cache: ScheduleCache) -> bool:
+    return cache.last_refresh_failed_at is not None and cache.last_refresh_failed_at > cache.fetched_at
 
 
 async def save_group_schedule_cache(db: AsyncSession, schedule: GroupSchedule) -> ScheduleCache:

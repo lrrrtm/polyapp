@@ -158,10 +158,36 @@ async def test_group_schedule_live_response_updates_cache(override_db: None, db_
         app.dependency_overrides.pop(get_ruz_client, None)
 
     assert response.status_code == 200
-    assert response.json()["meta"] == {"source": "live", "is_stale": False, "fetched_at": None, "failed_refresh_at": None}
+    assert response.json()["meta"]["source"] == "live"
+    assert response.json()["meta"]["is_stale"] is False
+    assert response.json()["meta"]["fetched_at"] is not None
+    assert response.json()["meta"]["failed_refresh_at"] is None
     cache = await db_session.scalar(select(ScheduleCache))
     assert cache is not None
     assert cache.ruz_id == 44302
+
+
+@pytest.mark.asyncio
+async def test_group_schedule_uses_cache_for_saved_group(override_db: None, db_session: AsyncSession) -> None:
+    user = User(identity_hash="user")
+    db_session.add(user)
+    await db_session.flush()
+    db_session.add(UserScheduleItem(user_id=user.id, item_type="group", ruz_id=44302, is_primary=True))
+    await save_group_schedule_cache(db_session, make_group_schedule())
+    await db_session.flush()
+    app.dependency_overrides[get_ruz_client] = lambda: FakeRuzClient(fail=True)
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/api/v1/groups/44302/schedule", params={"date": "2026-08-31"})
+    finally:
+        app.dependency_overrides.pop(get_ruz_client, None)
+
+    assert response.status_code == 200
+    assert response.json()["meta"]["source"] == "cache"
+    assert response.json()["meta"]["is_stale"] is False
+    assert response.json()["meta"]["fetched_at"] is not None
+    assert response.json()["days"][0]["lessons"][0]["subject"] == "Связь"
 
 
 @pytest.mark.asyncio
