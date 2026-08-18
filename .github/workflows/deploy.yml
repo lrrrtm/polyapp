@@ -30,7 +30,7 @@ jobs:
       - name: Run backend tests
         run: uv run pytest
         env:
-          DATABASE_URL: sqlite+aiosqlite:///:memory:
+          DATABASE_URL: "sqlite+aiosqlite:///:memory:"
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
