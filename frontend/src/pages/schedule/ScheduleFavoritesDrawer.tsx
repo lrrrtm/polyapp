@@ -3,9 +3,11 @@ import Alert from '@mui/material/Alert'
 import AppBar from '@mui/material/AppBar'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import CloseIcon from '@mui/icons-material/Close'
 import IconButton from '@mui/material/IconButton'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import List from '@mui/material/List'
+import ListItem from '@mui/material/ListItem'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
@@ -16,6 +18,7 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
+import { useState } from 'react'
 import type { ScheduleItem } from '../../shared/api/users'
 import { BottomDrawer } from '../../shared/ui/BottomDrawer'
 import { DelayedSkeleton } from '../../shared/ui/DelayedSkeleton'
@@ -45,11 +48,19 @@ type ScheduleFavoritesDrawerProps = {
   shouldSearchRuz: boolean
   addFavoritePending: boolean
   addFavoriteError: boolean
+  deleteFavoritePending: boolean
+  deleteFavoriteError: boolean
   onOpen: () => void
   onClose: () => void
   onSearchChange: (value: string) => void
   onActiveScheduleItemChange: (item: ScheduleItem) => void
   onAddFavorite: (result: SearchResult) => void
+  onDeleteFavorite: (item: ScheduleItem) => Promise<void>
+}
+
+type DeleteCandidate = {
+  item: ScheduleItem
+  title: string
 }
 
 export function ScheduleFavoritesDrawer({
@@ -68,12 +79,17 @@ export function ScheduleFavoritesDrawer({
   shouldSearchRuz,
   addFavoritePending,
   addFavoriteError,
+  deleteFavoritePending,
+  deleteFavoriteError,
   onOpen,
   onClose,
   onSearchChange,
   onActiveScheduleItemChange,
   onAddFavorite,
+  onDeleteFavorite,
 }: ScheduleFavoritesDrawerProps) {
+  const [deleteCandidate, setDeleteCandidate] = useState<DeleteCandidate | null>(null)
+
   return (
     <>
       <AppBar
@@ -125,38 +141,57 @@ export function ScheduleFavoritesDrawer({
               const itemLoading = index >= 0 && scheduleItemQueries[index]?.isPending === true
               const isSelected =
                 item.item_type === activeScheduleItem?.item_type && item.ruz_id === activeScheduleItem?.ruz_id
+              const title = getScheduleTitle(item, schedule)
+              const subtitle = getScheduleSubtitle(item, schedule)
 
               return (
-                <ListItemButton
+                <ListItem
                   key={`${item.item_type}-${item.ruz_id}`}
-                  selected={isSelected}
-                  onClick={() => {
-                    onActiveScheduleItemChange(item)
-                    onClose()
-                  }}
+                  disablePadding
+                  secondaryAction={
+                    item.is_primary ? null : (
+                      <IconButton
+                        edge="end"
+                        aria-label="Удалить из избранного"
+                        disabled={deleteFavoritePending}
+                        onClick={() => setDeleteCandidate({ item, title })}
+                      >
+                        <CloseIcon />
+                      </IconButton>
+                    )
+                  }
                 >
-                  <ListItemIcon>
-                    {item.item_type === 'teacher' ? <PersonIcon color="action" /> : <SchoolIcon color="action" />}
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={
-                      itemLoading ? (
-                        <DelayedSkeleton show variant="text" width="55%" />
-                      ) : (
-                        <Typography noWrap>{getScheduleTitle(item, schedule)}</Typography>
-                      )
-                    }
-                    secondary={
-                      itemLoading ? (
-                        <DelayedSkeleton show variant="text" width="75%" />
-                      ) : (
-                        <Typography variant="body2" color="text.secondary" noWrap>
-                          {getScheduleSubtitle(item, schedule)}
-                        </Typography>
-                      )
-                    }
-                  />
-                </ListItemButton>
+                  <ListItemButton
+                    selected={isSelected}
+                    sx={{ pr: item.is_primary ? 2 : 7 }}
+                    onClick={() => {
+                      onActiveScheduleItemChange(item)
+                      onClose()
+                    }}
+                  >
+                    <ListItemIcon>
+                      {item.item_type === 'teacher' ? <PersonIcon color="action" /> : <SchoolIcon color="action" />}
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={
+                        itemLoading ? (
+                          <DelayedSkeleton show variant="text" width="55%" />
+                        ) : (
+                          <Typography noWrap>{title}</Typography>
+                        )
+                      }
+                      secondary={
+                        itemLoading ? (
+                          <DelayedSkeleton show variant="text" width="75%" />
+                        ) : (
+                          <Typography variant="body2" color="text.secondary" noWrap>
+                            {subtitle}
+                          </Typography>
+                        )
+                      }
+                    />
+                  </ListItemButton>
+                </ListItem>
               )
             })}
             {isExternalSearchPending ? <SearchResultsLoading show /> : null}
@@ -207,6 +242,55 @@ export function ScheduleFavoritesDrawer({
               <EmptyState icon={SearchOffIcon} title="Ничего не найдено" sx={{ minHeight: 280 }} />
             ) : null}
           </List>
+        </Stack>
+      </BottomDrawer>
+      <BottomDrawer
+        open={deleteCandidate !== null}
+        onClose={() => {
+          if (!deleteFavoritePending) {
+            setDeleteCandidate(null)
+          }
+        }}
+        title="Удалить из избранного?"
+      >
+        <Stack spacing={2.5} sx={{ px: 3, pt: 1, pb: 4 }}>
+          <Stack spacing={0.75}>
+            <Typography variant="body1">Это расписание исчезнет из списка избранного.</Typography>
+            <Typography variant="body2" color="text.secondary">
+              {deleteCandidate?.title ?? ''}
+            </Typography>
+          </Stack>
+          <Stack direction="row" spacing={1.25}>
+            <Button
+              variant="outlined"
+              size="large"
+              disabled={deleteFavoritePending}
+              onClick={() => setDeleteCandidate(null)}
+              fullWidth
+            >
+              Отмена
+            </Button>
+            <Button
+              variant="contained"
+              color="error"
+              size="large"
+              disabled={!deleteCandidate}
+              loading={deleteFavoritePending}
+              onClick={() => {
+                if (!deleteCandidate) {
+                  return
+                }
+
+                void onDeleteFavorite(deleteCandidate.item)
+                  .then(() => setDeleteCandidate(null))
+                  .catch(() => undefined)
+              }}
+              fullWidth
+            >
+              Удалить
+            </Button>
+          </Stack>
+          {deleteFavoriteError ? <Alert severity="error">Не удалось удалить из избранного.</Alert> : null}
         </Stack>
       </BottomDrawer>
     </>

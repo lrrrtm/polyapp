@@ -8,6 +8,7 @@ import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar'
 import dayjs from 'dayjs'
+import { useMemo } from 'react'
 import { formatScheduleHeaderDate } from '../../shared/date'
 import { centeredFixedSurfaceSx } from '../../shared/ui/layout'
 
@@ -26,6 +27,8 @@ export function ScheduleHeader({
   onSelectedDateChange,
   onMoveSelectedDate,
 }: ScheduleHeaderProps) {
+  const calendarValue = useMemo(() => dayjs(selectedDate), [selectedDate])
+
   return (
     <>
       <AppBar
@@ -84,7 +87,7 @@ export function ScheduleHeader({
         transformOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
         <DateCalendar
-          value={dayjs(selectedDate)}
+          value={calendarValue}
           onChange={(value) => {
             if (value?.isValid()) {
               onSelectedDateChange(value.format('YYYY-MM-DD'))

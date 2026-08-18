@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { apiGet, apiPost, apiPut } from './http'
+import { apiDelete, apiGet, apiPost, apiPut } from './http'
 
 const sessionStatusSchema = z.object({
   has_user: z.boolean(),
@@ -50,6 +50,10 @@ export async function setPrimaryGroup(ruzId: number): Promise<UserProfile> {
 
 export async function addFavorite(itemType: ScheduleItem['item_type'], ruzId: number): Promise<ScheduleItem> {
   return apiPost('/api/v1/me/favorites', { item_type: itemType, ruz_id: ruzId }, scheduleItemSchema)
+}
+
+export async function deleteFavorite(itemId: string): Promise<void> {
+  return apiDelete(`/api/v1/me/favorites/${itemId}`)
 }
 
 export function setUserProfileApplicantCode(

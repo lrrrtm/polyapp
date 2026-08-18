@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { queryKeys } from '../../shared/api/queryKeys'
 import { searchGroups, searchTeachers } from '../../shared/api/ruz'
-import { addFavorite, type ScheduleItem } from '../../shared/api/users'
+import { addFavorite, deleteFavorite, type ScheduleItem } from '../../shared/api/users'
 import {
   getScheduleTitle,
   groupToSearchResult,
@@ -21,6 +21,7 @@ export function useScheduleSearch(
   scheduleDrawerOpen: boolean,
   scheduleItems: ScheduleItem[],
   scheduleItemQueries: SchedulePreviewQuery[],
+  onFavoriteDeleted?: (item: ScheduleItem) => void,
 ) {
   const queryClient = useQueryClient()
   const [scheduleSearch, setScheduleSearch] = useState('')
@@ -82,6 +83,13 @@ export function useScheduleSearch(
       setDebouncedScheduleSearch('')
     },
   })
+  const deleteFavoriteMutation = useMutation({
+    mutationFn: (item: ScheduleItem) => deleteFavorite(item.id),
+    onSuccess: async (_, item) => {
+      onFavoriteDeleted?.(item)
+      await queryClient.invalidateQueries({ queryKey: queryKeys.me() })
+    },
+  })
 
   return {
     scheduleSearch,
@@ -100,5 +108,6 @@ export function useScheduleSearch(
     searchError: shouldSearchRuz && isSearchSettled && (groupSearchQuery.isError || teacherSearchQuery.isError),
     shouldSearchRuz,
     addFavoriteMutation,
+    deleteFavoriteMutation,
   }
 }

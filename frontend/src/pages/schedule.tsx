@@ -60,7 +60,14 @@ export function SchedulePage() {
     searchError,
     shouldSearchRuz,
     addFavoriteMutation,
-  } = useScheduleSearch(scheduleDrawerOpen, scheduleItems, scheduleItemQueries)
+    deleteFavoriteMutation,
+  } = useScheduleSearch(scheduleDrawerOpen, scheduleItems, scheduleItemQueries, (item) => {
+    if (item.item_type !== activeScheduleItem?.item_type || item.ruz_id !== activeScheduleItem.ruz_id) {
+      return
+    }
+
+    setActiveScheduleItem(profile?.primary_group ? { item_type: 'group', ruz_id: profile.primary_group.ruz_id } : null)
+  })
   const buildingMapLinksQuery = useQuery({
     queryKey: queryKeys.buildingMapLinks(),
     queryFn: getBuildingMapLinks,
@@ -144,6 +151,7 @@ export function SchedulePage() {
           open={primaryGroupDrawerOpen}
           onClose={() => setPrimaryGroupDrawerOpen(false)}
           currentGroup={null}
+          onSaved={(group) => setActiveScheduleItem({ item_type: 'group', ruz_id: group.id })}
         />
       </AppScreen>
     )
@@ -189,11 +197,14 @@ export function SchedulePage() {
         shouldSearchRuz={shouldSearchRuz}
         addFavoritePending={addFavoriteMutation.isPending}
         addFavoriteError={addFavoriteMutation.isError}
+        deleteFavoritePending={deleteFavoriteMutation.isPending}
+        deleteFavoriteError={deleteFavoriteMutation.isError}
         onOpen={() => setScheduleDrawerOpen(true)}
         onClose={() => setScheduleDrawerOpen(false)}
         onSearchChange={setScheduleSearch}
         onActiveScheduleItemChange={setActiveScheduleItem}
         onAddFavorite={(result) => addFavoriteMutation.mutate(result)}
+        onDeleteFavorite={(item) => deleteFavoriteMutation.mutateAsync(item)}
       />
       <LessonDetailsDrawer
         open={lessonDrawerOpen}

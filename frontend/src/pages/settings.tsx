@@ -34,7 +34,7 @@ const themePreferenceOptions: Array<{ value: ThemePreference; label: string }> =
 
 export function SettingsPage() {
   const { themePreference, setThemePreference } = useThemePreference()
-  const { hidePastLessons, setHidePastLessons, showBreaks, setShowBreaks } = useUserPreferences()
+  const { hidePastLessons, setActiveScheduleItem, setHidePastLessons, showBreaks, setShowBreaks } = useUserPreferences()
   const [themeDrawerOpen, setThemeDrawerOpen] = useState(false)
   const [applicantDrawerOpen, setApplicantDrawerOpen] = useState(false)
   const [groupDrawerOpen, setGroupDrawerOpen] = useState(false)
@@ -193,6 +193,7 @@ export function SettingsPage() {
         primaryGroupId={primaryGroupId}
         loading={currentGroupQuery.isFetching}
         error={currentGroupQuery.isError}
+        onSaved={(group) => setActiveScheduleItem({ item_type: 'group', ruz_id: group.id })}
       />
     </AppScreen>
   )

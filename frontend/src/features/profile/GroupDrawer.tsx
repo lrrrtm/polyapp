@@ -17,9 +17,10 @@ type GroupDrawerProps = {
   loading?: boolean
   error?: boolean
   onClose: () => void
+  onSaved?: (group: Group) => void
 }
 
-export function GroupDrawer({ open, currentGroup, primaryGroupId, loading, error, onClose }: GroupDrawerProps) {
+export function GroupDrawer({ open, currentGroup, primaryGroupId, loading, error, onClose, onSaved }: GroupDrawerProps) {
   const queryClient = useQueryClient()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [pendingGroup, setPendingGroup] = useState<Group | null>(null)
@@ -39,6 +40,9 @@ export function GroupDrawer({ open, currentGroup, primaryGroupId, loading, error
     onSuccess: async (profile) => {
       queryClient.setQueryData(queryKeys.me(), profile)
       await queryClient.invalidateQueries({ queryKey: queryKeys.scheduleRoot() })
+      if (pendingGroup) {
+        onSaved?.(pendingGroup)
+      }
       setConfirmOpen(false)
       setPendingGroup(null)
       onClose()
