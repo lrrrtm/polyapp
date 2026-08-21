@@ -7,7 +7,6 @@ import BottomNavigation from '@mui/material/BottomNavigation'
 import BottomNavigationAction from '@mui/material/BottomNavigationAction'
 import { useTheme } from '@mui/material/styles'
 import { useLocation, useNavigate } from 'react-router'
-import { centeredFixedSurfaceSx } from './layout'
 
 const navigationItems = [
   {
@@ -44,9 +43,11 @@ export function AppBottomNavigation() {
       color="default"
       elevation={0}
       sx={{
-        ...centeredFixedSurfaceSx,
         top: 'auto',
         bottom: 0,
+        left: 0,
+        right: 0,
+        width: '100%',
         zIndex: theme.zIndex.drawer - 1,
         borderTop: 1,
         borderColor: 'divider',

@@ -1,4 +1,4 @@
-export const appMaxWidth = 640
+export const appMaxWidth = 960
 
 export const centeredFixedSurfaceSx = {
   left: 0,
