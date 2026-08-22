@@ -4,6 +4,7 @@ import asyncio
 import logging
 
 from aiogram import Bot, Dispatcher, Router
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.exceptions import TelegramForbiddenError, TelegramRetryAfter, TelegramAPIError
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
@@ -115,7 +116,8 @@ async def main() -> None:
     if not settings.telegram_bot_token:
         raise RuntimeError("TELEGRAM_BOT_TOKEN is required when TELEGRAM_BOT_ENABLED=true")
 
-    bot = Bot(settings.telegram_bot_token)
+    session = AiohttpSession(proxy=settings.telegram_proxy_url) if settings.telegram_proxy_url else None
+    bot = Bot(settings.telegram_bot_token, session=session)
     dispatcher = Dispatcher()
     dispatcher.include_router(router)
     sender_task = asyncio.create_task(run_sender_loop(bot))

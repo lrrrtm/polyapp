@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     telegram_bot_token: str | None = Field(default=None, validation_alias="TELEGRAM_BOT_TOKEN")
     telegram_bot_username: str | None = Field(default=None, validation_alias="TELEGRAM_BOT_USERNAME")
     telegram_bot_enabled: bool = Field(default=False, validation_alias="TELEGRAM_BOT_ENABLED")
+    telegram_proxy_url: str | None = Field(default=None, validation_alias="TELEGRAM_PROXY_URL")
     telegram_outbox_poll_interval_seconds: int = Field(default=5, validation_alias="TELEGRAM_OUTBOX_POLL_INTERVAL_SECONDS")
     telegram_send_concurrency: int = Field(default=4, validation_alias="TELEGRAM_SEND_CONCURRENCY")
     user_cookie_name: str = Field(default="polytech_user", validation_alias="USER_COOKIE_NAME")
