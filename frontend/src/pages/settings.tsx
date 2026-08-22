@@ -72,7 +72,7 @@ export function SettingsPage() {
   const telegramStatus = telegramQuery.data
   const telegramConnected = telegramStatus?.connected === true
   const telegramSubtitle = telegramQuery.isPending ? (
-    <DelayedSkeleton show variant="text" width={104} />
+    'Проверяем подключение'
   ) : telegramConnected ? (
     'Telegram подключён'
   ) : (
