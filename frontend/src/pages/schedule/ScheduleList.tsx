@@ -67,7 +67,7 @@ export function ScheduleList({
   return (
     <Container
       component="main"
-      maxWidth="sm"
+      maxWidth={false}
       sx={{
         position: 'absolute',
         top: 56,

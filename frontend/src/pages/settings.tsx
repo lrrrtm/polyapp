@@ -88,7 +88,7 @@ export function SettingsPage() {
     <AppScreen>
       <Container
         component="main"
-        maxWidth="sm"
+        maxWidth={false}
         sx={{
           height: '100%',
           overflowY: 'auto',

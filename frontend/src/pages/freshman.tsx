@@ -55,7 +55,7 @@ export function FreshmanPage() {
     <AppScreen>
       <Container
         component="main"
-        maxWidth="sm"
+        maxWidth={false}
         sx={{ height: '100%', overflowY: admissionsQuery.isSuccess ? 'auto' : 'hidden', pt: 3, pb: 10 }}
       >
         <Stack spacing={2}>
