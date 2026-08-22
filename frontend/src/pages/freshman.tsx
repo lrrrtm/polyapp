@@ -19,6 +19,7 @@ import { CenteredAlert } from '../shared/ui/CenteredAlert'
 import { DelayedSkeleton } from '../shared/ui/DelayedSkeleton'
 import { EmptyState } from '../shared/ui/EmptyState'
 import { PageSkeleton } from '../shared/ui/PageSkeleton'
+import { centeredFixedSurfaceSx } from '../shared/ui/layout'
 import { useDelayedVisible } from '../shared/ui/useDelayedVisible'
 
 export function FreshmanPage() {
@@ -56,7 +57,13 @@ export function FreshmanPage() {
       <Container
         component="main"
         maxWidth={false}
-        sx={{ height: '100%', overflowY: admissionsQuery.isSuccess ? 'auto' : 'hidden', pt: 3, pb: 10 }}
+        sx={{
+          ...centeredFixedSurfaceSx,
+          height: '100%',
+          overflowY: admissionsQuery.isSuccess ? 'auto' : 'hidden',
+          pt: 3,
+          pb: 10,
+        }}
       >
         <Stack spacing={2}>
           {user.profile.applicant_code === null ? (

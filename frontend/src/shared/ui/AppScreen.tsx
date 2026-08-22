@@ -1,7 +1,6 @@
 import Box from '@mui/material/Box'
 import type { SxProps, Theme } from '@mui/material/styles'
 import type { ElementType, ReactNode } from 'react'
-import { appMaxWidth } from './layout'
 
 type AppScreenProps = {
   children: ReactNode
@@ -11,7 +10,7 @@ type AppScreenProps = {
 
 export function AppScreen({ children, component, sx }: AppScreenProps) {
   const screenSx = [
-    { height: '100svh', maxWidth: appMaxWidth, mx: 'auto', overflow: 'visible', bgcolor: 'background.default' },
+    { height: '100svh', width: '100%', overflow: 'visible', bgcolor: 'background.default' },
     ...(Array.isArray(sx) ? sx : [sx]),
   ]
 

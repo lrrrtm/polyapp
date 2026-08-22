@@ -22,6 +22,7 @@ import { AppScreen } from '../shared/ui/AppScreen'
 import { BottomDrawer } from '../shared/ui/BottomDrawer'
 import { CenteredAlert } from '../shared/ui/CenteredAlert'
 import { PageSkeleton } from '../shared/ui/PageSkeleton'
+import { centeredFixedSurfaceSx } from '../shared/ui/layout'
 
 const dormitoryContractStorageKey = 'polytech:dormitory-payment-contract'
 const ePayUrl = 'https://e-pay.spbstu.ru'
@@ -81,6 +82,7 @@ export function ServicesPage() {
         component="main"
         maxWidth={false}
         sx={{
+          ...centeredFixedSurfaceSx,
           height: '100%',
           overflowY: 'auto',
           pt: 3,

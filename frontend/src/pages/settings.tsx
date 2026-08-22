@@ -27,6 +27,7 @@ import { BottomDrawer } from '../shared/ui/BottomDrawer'
 import { CenteredAlert } from '../shared/ui/CenteredAlert'
 import { DelayedSkeleton } from '../shared/ui/DelayedSkeleton'
 import { PageSkeleton } from '../shared/ui/PageSkeleton'
+import { centeredFixedSurfaceSx } from '../shared/ui/layout'
 
 const themePreferenceOptions: Array<{ value: ThemePreference; label: string }> = [
   { value: 'system', label: 'Системная' },
@@ -90,6 +91,7 @@ export function SettingsPage() {
         component="main"
         maxWidth={false}
         sx={{
+          ...centeredFixedSurfaceSx,
           height: '100%',
           overflowY: 'auto',
           pt: 3,
