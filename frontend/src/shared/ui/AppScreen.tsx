@@ -11,7 +11,7 @@ type AppScreenProps = {
 
 export function AppScreen({ children, component, sx }: AppScreenProps) {
   const screenSx = [
-    { height: '100svh', maxWidth: appMaxWidth, mx: 'auto', overflow: 'hidden', bgcolor: 'background.default' },
+    { height: '100svh', maxWidth: appMaxWidth, mx: 'auto', overflow: 'visible', bgcolor: 'background.default' },
     ...(Array.isArray(sx) ? sx : [sx]),
   ]
 

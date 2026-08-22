@@ -14,6 +14,7 @@ import type { PointerEvent } from 'react'
 import { formatLessonTime } from '../../shared/date'
 import { DelayedSkeleton } from '../../shared/ui/DelayedSkeleton'
 import { EmptyState } from '../../shared/ui/EmptyState'
+import { centeredFixedSurfaceSx } from '../../shared/ui/layout'
 import { useDelayedVisible } from '../../shared/ui/useDelayedVisible'
 import {
   formatAuditorium,
@@ -69,6 +70,7 @@ export function ScheduleList({
       component="main"
       maxWidth={false}
       sx={{
+        ...centeredFixedSurfaceSx,
         position: 'absolute',
         top: 56,
         bottom: 112,
