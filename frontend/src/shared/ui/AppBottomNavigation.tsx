@@ -7,13 +7,18 @@ import BottomNavigation from '@mui/material/BottomNavigation'
 import BottomNavigationAction from '@mui/material/BottomNavigationAction'
 import { useTheme } from '@mui/material/styles'
 import { useLocation, useNavigate } from 'react-router'
+import { appConfig } from '../../app/config'
 
 const navigationItems = [
-  {
-    label: 'Поступление',
-    value: '/freshman',
-    icon: <SchoolIcon />,
-  },
+  ...(appConfig.VITE_ADMISSIONS_ENABLED
+    ? [
+        {
+          label: 'Поступление',
+          value: '/freshman',
+          icon: <SchoolIcon />,
+        },
+      ]
+    : []),
   {
     label: 'Расписание',
     value: '/schedule',

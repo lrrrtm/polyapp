@@ -26,6 +26,7 @@ class Settings(BaseSettings):
         default=15 * 60,
         validation_alias="ADMISSIONS_REFRESH_INTERVAL_SECONDS",
     )
+    admissions_enabled: bool = Field(default=True, validation_alias="ADMISSIONS_ENABLED")
     admissions_refresh_enabled: bool = Field(default=True, validation_alias="ADMISSIONS_REFRESH_ENABLED")
     schedule_refresh_interval_seconds: int = Field(
         default=15 * 60,

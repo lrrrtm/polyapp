@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     schedule_refresh_lock = asyncio.Lock()
     admissions_refresh_task = None
     schedule_refresh_task = None
-    if settings.admissions_refresh_enabled:
+    if settings.admissions_enabled and settings.admissions_refresh_enabled:
         admissions_refresh_task = asyncio.create_task(run_admissions_refresh_loop(admissions_refresh_lock))
     async with httpx.AsyncClient(
         base_url=settings.ruz_base_url,
@@ -106,7 +106,8 @@ def create_app() -> FastAPI:
     app.include_router(ruz_router, prefix=settings.api_v1_prefix)
     app.include_router(users_router, prefix=settings.api_v1_prefix)
     app.include_router(buildings_router, prefix=settings.api_v1_prefix)
-    app.include_router(admissions_router, prefix=settings.api_v1_prefix)
+    if settings.admissions_enabled:
+        app.include_router(admissions_router, prefix=settings.api_v1_prefix)
     app.include_router(schedules_router, prefix=settings.api_v1_prefix)
     app.include_router(notifications_router, prefix=settings.api_v1_prefix)
     app.include_router(services_router, prefix=settings.api_v1_prefix)

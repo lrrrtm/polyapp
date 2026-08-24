@@ -12,6 +12,7 @@ import Typography from '@mui/material/Typography'
 import { useQuery } from '@tanstack/react-query'
 import { type ReactNode, useMemo, useState } from 'react'
 import { Navigate } from 'react-router'
+import { appConfig } from '../app/config'
 import { type ThemePreference, useThemePreference } from '../app/theme-preference-context'
 import { useUserPreferences } from '../app/user-preferences-context'
 import { ApplicantCodeDrawer } from '../features/profile/ApplicantCodeDrawer'
@@ -111,18 +112,20 @@ export function SettingsPage() {
               />
             </List>
           </Stack>
-          <Stack spacing={1}>
-            <Typography variant="overline" component="h2" color="text.secondary">
-              Поступление
-            </Typography>
-            <List disablePadding>
-              <SettingsRow
-                title="Уникальный код поступающего"
-                subtitle={applicantCodeSubtitle}
-                onClick={() => setApplicantDrawerOpen(true)}
-              />
-            </List>
-          </Stack>
+          {appConfig.VITE_ADMISSIONS_ENABLED ? (
+            <Stack spacing={1}>
+              <Typography variant="overline" component="h2" color="text.secondary">
+                Поступление
+              </Typography>
+              <List disablePadding>
+                <SettingsRow
+                  title="Уникальный код поступающего"
+                  subtitle={applicantCodeSubtitle}
+                  onClick={() => setApplicantDrawerOpen(true)}
+                />
+              </List>
+            </Stack>
+          ) : null}
           <Stack spacing={1}>
             <Typography variant="overline" component="h2" color="text.secondary">
               Расписание
@@ -206,11 +209,13 @@ export function SettingsPage() {
           ))}
         </List>
       </BottomDrawer>
-      <ApplicantCodeDrawer
-        open={applicantDrawerOpen}
-        onClose={() => setApplicantDrawerOpen(false)}
-        currentCode={user.profile.applicant_code?.code}
-      />
+      {appConfig.VITE_ADMISSIONS_ENABLED ? (
+        <ApplicantCodeDrawer
+          open={applicantDrawerOpen}
+          onClose={() => setApplicantDrawerOpen(false)}
+          currentCode={user.profile.applicant_code?.code}
+        />
+      ) : null}
       <GroupDrawer
         open={groupDrawerOpen}
         onClose={() => setGroupDrawerOpen(false)}

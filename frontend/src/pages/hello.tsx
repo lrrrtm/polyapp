@@ -12,6 +12,7 @@ import { GradFlow } from 'gradflow'
 import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router'
+import { appConfig } from '../app/config'
 import { setApplicantCode } from '../shared/api/admissions'
 import { queryKeys } from '../shared/api/queryKeys'
 import { type Faculty, type Group, getFaculties, getGroupsByFaculty } from '../shared/api/ruz'
@@ -51,7 +52,7 @@ export function HelloPage() {
     onSuccess: (profile) => {
       queryClient.setQueryData(queryKeys.me(), profile)
       queryClient.setQueryData(queryKeys.session(), { hasUser: true })
-      setStep('applicant')
+      setStep(appConfig.VITE_ADMISSIONS_ENABLED ? 'applicant' : 'group')
     },
   })
   const saveMutation = useMutation({
@@ -76,7 +77,10 @@ export function HelloPage() {
 
   const trimmedApplicantCode = applicantCode.trim()
   const canSaveApplicantCode = /^\d+$/.test(trimmedApplicantCode)
-  const donePath = applicantCodeSaved ? '/freshman' : '/schedule'
+  const donePath = appConfig.VITE_ADMISSIONS_ENABLED && applicantCodeSaved ? '/freshman' : '/schedule'
+  const helloDescription = appConfig.VITE_ADMISSIONS_ENABLED
+    ? 'Это супер-апп политеха, в котором ты сможешь удобно просматривать расписание, отслеживать своё положение при поступлении и делать много разного. Начнём?'
+    : 'Это супер-апп политеха, в котором ты сможешь удобно просматривать расписание и делать много разного. Начнём?'
 
   useEffect(() => {
     if (step !== 'done') {
@@ -162,7 +166,7 @@ export function HelloPage() {
                       Привет!
                     </Typography>
                     <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 420 }}>
-                      Это супер-апп политеха, в котором ты сможешь удобно просматривать расписание, отслеживать своё положение при поступлении и делать много разного. Начнём?
+                      {helloDescription}
                     </Typography>
                   </Stack>
                   <ActionButton
@@ -178,22 +182,24 @@ export function HelloPage() {
                 </Stack>
               </Box>
             </Slide>
-            <Slide direction="up" in={step === 'applicant'} timeout={360} mountOnEnter unmountOnExit>
-              <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center' }}>
-                <ApplicantCodeStep
-                  code={applicantCode}
-                  canContinue={canSaveApplicantCode}
-                  isSaving={saveApplicantCodeMutation.isPending}
-                  saveError={saveApplicantCodeMutation.error}
-                  onCodeChange={(code) => {
-                    saveApplicantCodeMutation.reset()
-                    setApplicantCodeValue(code)
-                  }}
-                  onContinue={() => saveApplicantCodeMutation.mutate()}
-                  onSkip={() => setStep('group')}
-                />
-              </Box>
-            </Slide>
+            {appConfig.VITE_ADMISSIONS_ENABLED ? (
+              <Slide direction="up" in={step === 'applicant'} timeout={360} mountOnEnter unmountOnExit>
+                <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center' }}>
+                  <ApplicantCodeStep
+                    code={applicantCode}
+                    canContinue={canSaveApplicantCode}
+                    isSaving={saveApplicantCodeMutation.isPending}
+                    saveError={saveApplicantCodeMutation.error}
+                    onCodeChange={(code) => {
+                      saveApplicantCodeMutation.reset()
+                      setApplicantCodeValue(code)
+                    }}
+                    onContinue={() => saveApplicantCodeMutation.mutate()}
+                    onSkip={() => setStep('group')}
+                  />
+                </Box>
+              </Slide>
+            ) : null}
             <Slide direction="up" in={step === 'group'} timeout={360} mountOnEnter unmountOnExit>
               <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center' }}>
                 <Stack spacing={4} sx={{ width: 1, pb: { xs: 4, sm: 0 } }}>

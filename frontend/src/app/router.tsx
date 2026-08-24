@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router'
+import { createBrowserRouter, Navigate } from 'react-router'
 import { HelloPage } from '../pages/hello'
 import { RegisterPage } from '../pages/register'
 import { RootPage } from '../pages/root'
@@ -7,6 +7,7 @@ import { ServicesPage } from '../pages/services'
 import { SettingsPage } from '../pages/settings'
 import { FreshmanPage } from '../pages/freshman'
 import { TabsLayout } from '../shared/ui/TabsLayout'
+import { appConfig } from './config'
 
 export const router = createBrowserRouter([
   {
@@ -21,13 +22,25 @@ export const router = createBrowserRouter([
     path: '/register',
     element: <RegisterPage />,
   },
+  ...(!appConfig.VITE_ADMISSIONS_ENABLED
+    ? [
+        {
+          path: '/freshman',
+          element: <Navigate to="/schedule" replace />,
+        },
+      ]
+    : []),
   {
     element: <TabsLayout />,
     children: [
-      {
-        path: '/freshman',
-        element: <FreshmanPage />,
-      },
+      ...(appConfig.VITE_ADMISSIONS_ENABLED
+        ? [
+            {
+              path: '/freshman',
+              element: <FreshmanPage />,
+            },
+          ]
+        : []),
       {
         path: '/schedule',
         element: <SchedulePage />,

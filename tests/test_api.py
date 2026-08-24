@@ -8,7 +8,8 @@ from httpx import ASGITransport, AsyncClient
 from app.api.deps import get_ruz_client
 from app.buildings.models import BuildingMapLink
 from app.clients.ruz import RuzApiError
-from app.main import app
+from app.core.config import get_settings
+from app.main import app, create_app
 from app.schemas.ruz import Faculty, Group, GroupSchedule, Teacher, TeacherSchedule, Week
 from app.schedules.models import ScheduleCache, ScheduleChangeEvent
 from app.schedules.service import save_group_schedule_cache, schedule_week_starts
@@ -74,6 +75,20 @@ async def test_health() -> None:
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
     assert response.headers["X-Request-ID"]
+
+
+def test_admissions_routes_can_be_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+    monkeypatch.setenv("ADMISSIONS_ENABLED", "false")
+    get_settings.cache_clear()
+    try:
+        disabled_app = create_app()
+    finally:
+        get_settings.cache_clear()
+
+    paths = {path for route in disabled_app.routes if (path := getattr(route, "path", None))}
+    assert "/api/v1/me/admissions" not in paths
+    assert "/api/v1/me/applicant-code" not in paths
 
 
 @pytest.mark.asyncio

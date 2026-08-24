@@ -5,7 +5,9 @@ WORKDIR /app
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 
 ARG VITE_API_BASE_URL=
+ARG VITE_ADMISSIONS_ENABLED=true
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+ENV VITE_ADMISSIONS_ENABLED=${VITE_ADMISSIONS_ENABLED}
 
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
 RUN corepack enable && pnpm install --frozen-lockfile

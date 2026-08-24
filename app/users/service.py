@@ -5,6 +5,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.admissions.service import get_applicant_profile
+from app.core.config import get_settings
 from app.users.models import ScheduleItemType, User, UserScheduleItem
 from app.users.schemas import UserApplicantCodeRead, UserProfile, UserScheduleItemRead
 
@@ -39,7 +40,7 @@ async def get_profile(db: AsyncSession, user: User) -> UserProfile:
     items = await list_schedule_items(db, user)
     primary_group = next((item for item in items if item.is_primary), None)
     favorites = [item for item in items if not item.is_primary]
-    applicant_profile = await get_applicant_profile(db, user)
+    applicant_profile = await get_applicant_profile(db, user) if get_settings().admissions_enabled else None
     return UserProfile(
         id=user.id,
         primary_group=UserScheduleItemRead.model_validate(primary_group) if primary_group else None,

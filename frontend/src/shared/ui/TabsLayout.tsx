@@ -2,9 +2,12 @@ import Box from '@mui/material/Box'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef } from 'react'
 import { useLocation, useOutlet } from 'react-router'
+import { appConfig } from '../../app/config'
 import { AppBottomNavigation } from './AppBottomNavigation'
 
-const tabPaths = ['/freshman', '/schedule', '/services', '/settings']
+const tabPaths = appConfig.VITE_ADMISSIONS_ENABLED
+  ? ['/freshman', '/schedule', '/services', '/settings']
+  : ['/schedule', '/services', '/settings']
 
 export function TabsLayout() {
   const location = useLocation()

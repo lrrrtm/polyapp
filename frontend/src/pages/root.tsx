@@ -1,4 +1,5 @@
 import { Navigate } from 'react-router'
+import { appConfig } from '../app/config'
 import { useRequiredUser } from '../shared/api/useRequiredUser'
 import { CenteredAlert } from '../shared/ui/CenteredAlert'
 import { PageSkeleton } from '../shared/ui/PageSkeleton'
@@ -19,7 +20,7 @@ export function RootPage() {
   }
 
   if (!user.profile.primary_group) {
-    return <Navigate to="/freshman" replace />
+    return <Navigate to={appConfig.VITE_ADMISSIONS_ENABLED ? '/freshman' : '/schedule'} replace />
   }
 
   return <Navigate to="/schedule" replace />
