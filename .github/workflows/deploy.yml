@@ -98,6 +98,7 @@ jobs:
           push: true
           build-args: |
             VITE_API_BASE_URL=${{ vars.VITE_API_BASE_URL }}
+            VITE_ADMISSIONS_ENABLED=${{ vars.ADMISSIONS_ENABLED || 'true' }}
           tags: |
             ${{ env.FRONTEND_IMAGE }}:latest
             ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
@@ -135,7 +136,13 @@ jobs:
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
             git fetch --prune origin main
             git reset --hard origin/main
-            docker compose pull api frontend bot
-            docker compose up -d --no-build db api frontend bot
+            cat > docker-compose.admissions.override.yml <<'COMPOSE'
+            services:
+              api:
+                environment:
+                  ADMISSIONS_ENABLED: "${{ vars.ADMISSIONS_ENABLED || 'true' }}"
+            COMPOSE
+            docker compose -f docker-compose.yml -f docker-compose.override.yml -f docker-compose.admissions.override.yml pull api frontend bot
+            docker compose -f docker-compose.yml -f docker-compose.override.yml -f docker-compose.admissions.override.yml up -d --no-build db api frontend bot
             docker image prune -f
           EOF
