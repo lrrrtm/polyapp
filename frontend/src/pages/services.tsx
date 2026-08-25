@@ -21,6 +21,7 @@ import { ActionButton } from '../shared/ui/ActionButton'
 import { AppScreen } from '../shared/ui/AppScreen'
 import { BottomDrawer } from '../shared/ui/BottomDrawer'
 import { CenteredAlert } from '../shared/ui/CenteredAlert'
+import { ConfirmDrawer } from '../shared/ui/ConfirmDrawer'
 import { PageSkeleton } from '../shared/ui/PageSkeleton'
 import { centeredFixedSurfaceSx } from '../shared/ui/layout'
 
@@ -35,6 +36,7 @@ export function ServicesPage() {
   const [contractDrawerOpen, setContractDrawerOpen] = useState(false)
   const [detailsDrawerOpen, setDetailsDrawerOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [contractDeleteConfirmed, setContractDeleteConfirmed] = useState(false)
 
   useEffect(() => {
     const savedContract = window.localStorage.getItem(dormitoryContractStorageKey)
@@ -125,10 +127,18 @@ export function ServicesPage() {
           onClose={() => setDeleteConfirmOpen(false)}
           onConfirm={() => {
             window.localStorage.removeItem(dormitoryContractStorageKey)
-            setStoredContract(null)
-            setContractInput('')
+            setContractDeleteConfirmed(true)
             setDeleteConfirmOpen(false)
             setDetailsDrawerOpen(false)
+          }}
+          onExited={() => {
+            if (!contractDeleteConfirmed) {
+              return
+            }
+
+            setStoredContract(null)
+            setContractInput('')
+            setContractDeleteConfirmed(false)
           }}
         />
       </Container>
@@ -206,26 +216,25 @@ function DeleteContractDrawer({
   contract,
   onClose,
   onConfirm,
+  onExited,
 }: {
   open: boolean
   contract: string | null
   onClose: () => void
   onConfirm: () => void
+  onExited: () => void
 }) {
   return (
-    <BottomDrawer open={open} onClose={onClose} title="Удаление номера договора">
-      <Stack spacing={2.5} sx={{ px: 3, pt: 1, pb: 4 }}>
-        <Typography variant="body1">Удалить номер договора {contract ?? ''} с этого устройства?</Typography>
-        <Stack direction="row" spacing={2}>
-          <Button variant="outlined" size="large" onClick={onClose} fullWidth>
-            Отмена
-          </Button>
-          <Button variant="contained" color="error" size="large" onClick={onConfirm} fullWidth>
-            Удалить
-          </Button>
-        </Stack>
-      </Stack>
-    </BottomDrawer>
+    <ConfirmDrawer
+      open={open}
+      onClose={onClose}
+      onExited={onExited}
+      title="Удаление номера договора"
+      message={`Удалить номер договора ${contract ?? ''} с этого устройства?`}
+      confirmLabel="Удалить"
+      confirmColor="error"
+      onConfirm={onConfirm}
+    />
   )
 }
 

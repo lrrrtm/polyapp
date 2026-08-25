@@ -1,12 +1,18 @@
 import type { SvgIconComponent } from '@mui/icons-material'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Skeleton from '@mui/material/Skeleton'
 import type { SxProps, Theme } from '@mui/material/styles'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { lazy, Suspense, useState } from 'react'
+import { loadLottieSvg } from './empty-state-lotties'
 
-type EmptyStateProps = {
-  icon: SvgIconComponent
+const LottieSvg = lazy(loadLottieSvg)
+const emptyStateLottieSize = 160
+
+type EmptyStateBaseProps = {
   title: string
   description?: string
   actionLabel?: string
@@ -14,11 +20,29 @@ type EmptyStateProps = {
   sx?: SxProps<Theme>
 }
 
-export function EmptyState({ icon: Icon, title, description, actionLabel, onAction, sx }: EmptyStateProps) {
+type EmptyStateVisualProps =
+  | {
+      icon: SvgIconComponent
+      lottieSrc?: never
+    }
+  | {
+      icon?: SvgIconComponent
+      lottieSrc: string | object
+    }
+
+type EmptyStateProps = EmptyStateBaseProps & EmptyStateVisualProps
+
+export function EmptyState({ icon: Icon, lottieSrc, title, description, actionLabel, onAction, sx }: EmptyStateProps) {
+  const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
+
   return (
     <Box sx={[{ minHeight: 'calc(100vh - 96px)', display: 'grid', placeItems: 'center', px: 2 }, ...(Array.isArray(sx) ? sx : [sx])]}>
       <Stack spacing={2} sx={{ alignItems: 'center', textAlign: 'center' }}>
-        <Icon color="disabled" sx={{ fontSize: 56 }} aria-hidden />
+        {lottieSrc ? (
+          <EmptyStateLottie lottieSrc={lottieSrc} reduceMotion={reduceMotion} />
+        ) : Icon ? (
+          <Icon color="disabled" sx={{ fontSize: 56 }} aria-hidden />
+        ) : null}
         <Stack spacing={0.5} sx={{ alignItems: 'center' }}>
           <Typography variant="h6" component="p">
             {title}
@@ -35,6 +59,26 @@ export function EmptyState({ icon: Icon, title, description, actionLabel, onActi
           </Button>
         ) : null}
       </Stack>
+    </Box>
+  )
+}
+
+function EmptyStateLottie({ lottieSrc, reduceMotion }: { lottieSrc: string | object; reduceMotion: boolean }) {
+  const [ready, setReady] = useState(false)
+
+  return (
+    <Box sx={{ width: emptyStateLottieSize, height: emptyStateLottieSize, position: 'relative', display: 'grid', placeItems: 'center' }}>
+      {ready ? null : <Skeleton variant="rounded" width={emptyStateLottieSize} height={emptyStateLottieSize} sx={{ borderRadius: 4 }} />}
+      <Suspense fallback={null}>
+        <LottieSvg
+          src={lottieSrc}
+          autoplay={!reduceMotion}
+          loop={!reduceMotion}
+          subscriptions={{ ready: () => setReady(true), error: () => setReady(true) }}
+          style={{ position: 'absolute', inset: 0, width: emptyStateLottieSize, height: emptyStateLottieSize, opacity: ready ? 1 : 0 }}
+          aria-hidden
+        />
+      </Suspense>
     </Box>
   )
 }

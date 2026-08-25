@@ -16,7 +16,7 @@ import { LessonDetailsDrawer } from './schedule/LessonDetailsDrawer'
 import { ScheduleFavoritesDrawer } from './schedule/ScheduleFavoritesDrawer'
 import { ScheduleHeader } from './schedule/ScheduleHeader'
 import { ScheduleList } from './schedule/ScheduleList'
-import { getLessonMapUrl, isLessonPast, type Lesson } from './schedule/schedule-utils'
+import { getLessonMapUrl, isBreakActive, isLessonPast, type Lesson } from './schedule/schedule-utils'
 import { useActiveSchedule } from './schedule/useActiveSchedule'
 import { useScheduleSearch } from './schedule/useScheduleSearch'
 
@@ -34,6 +34,7 @@ export function SchedulePage() {
   const [primaryGroupDrawerOpen, setPrimaryGroupDrawerOpen] = useState(false)
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
   const [lessonDrawerOpen, setLessonDrawerOpen] = useState(false)
+  const [lastKnownActiveScheduleTitle, setLastKnownActiveScheduleTitle] = useState('Расписание')
   const [now, setNow] = useState(() => new Date())
   const swipeStartX = useRef<number | null>(null)
 
@@ -89,14 +90,18 @@ export function SchedulePage() {
       return selectedDay.lessons
     }
 
-    return selectedDay.lessons.filter((lesson) => !isLessonPast(lesson.time_end, now))
-  }, [hidePastLessons, now, selectedDate, selectedDay])
+    return selectedDay.lessons.filter(
+      (lesson, index, lessons) =>
+        !isLessonPast(lesson.time_end, now) || (showBreaks && index < lessons.length - 1 && isBreakActive(lesson, lessons[index + 1], now)),
+    )
+  }, [hidePastLessons, now, selectedDate, selectedDay, showBreaks])
   const allTodayLessonsHidden =
     hidePastLessons &&
     selectedDate === toIsoDate(now) &&
     Boolean(selectedDay?.lessons.length) &&
     visibleLessons.length === 0
   const emptyStateTitle = allTodayLessonsHidden ? 'Сегодня занятий больше нет' : 'На этот день занятий нет'
+  const emptyStateLottieSrc = allTodayLessonsHidden ? '/animations/lessons-finished.json' : '/animations/no-lessons.json'
   const scheduleStale =
     activeScheduleQuery.data !== undefined &&
     'meta' in activeScheduleQuery.data &&
@@ -106,6 +111,12 @@ export function SchedulePage() {
     const intervalId = window.setInterval(() => setNow(new Date()), 1000)
     return () => window.clearInterval(intervalId)
   }, [])
+
+  useEffect(() => {
+    if (activeScheduleTitle !== 'Расписание') {
+      setLastKnownActiveScheduleTitle(activeScheduleTitle)
+    }
+  }, [activeScheduleTitle])
 
   function moveSelectedDate(days: number) {
     setSelectedDate((currentDate) => addDays(currentDate, days))
@@ -154,6 +165,7 @@ export function SchedulePage() {
       <AppScreen>
         <EmptyState
           icon={SchoolIcon}
+          lottieSrc="/animations/group-not-selected.json"
           title="Учебная группа не выбрана"
           description="Добавь свою учебную группу, чтобы смотреть расписание занятий."
           actionLabel="Выбрать группу"
@@ -187,6 +199,7 @@ export function SchedulePage() {
         success={activeScheduleQuery.isSuccess}
         stale={scheduleStale}
         emptyStateTitle={emptyStateTitle}
+        emptyStateLottieSrc={emptyStateLottieSrc}
         onLessonClick={(lesson) => {
           setSelectedLesson(lesson)
           setLessonDrawerOpen(true)
@@ -197,8 +210,7 @@ export function SchedulePage() {
       <ScheduleFavoritesDrawer
         open={scheduleDrawerOpen}
         activeScheduleItem={activeScheduleItem}
-        activeScheduleTitle={activeScheduleTitle}
-        activeScheduleLoading={activeScheduleQuery.isPending}
+        activeScheduleTitle={activeScheduleTitle === 'Расписание' ? lastKnownActiveScheduleTitle : activeScheduleTitle}
         scheduleItems={scheduleItems}
         scheduleItemQueries={scheduleItemQueries}
         scheduleSearch={scheduleSearch}
@@ -215,7 +227,10 @@ export function SchedulePage() {
         onOpen={() => setScheduleDrawerOpen(true)}
         onClose={() => setScheduleDrawerOpen(false)}
         onSearchChange={setScheduleSearch}
-        onActiveScheduleItemChange={setActiveScheduleItem}
+        onActiveScheduleItemChange={(item, title) => {
+          setLastKnownActiveScheduleTitle(title)
+          setActiveScheduleItem(item)
+        }}
         onAddFavorite={(result) => addFavoriteMutation.mutate(result)}
         onDeleteFavorite={(item) => deleteFavoriteMutation.mutateAsync(item)}
       />

@@ -56,7 +56,8 @@ export function useScheduleSearch(
 
   const favoriteSearchQuery = debouncedScheduleSearch
   const isSearchSettled = trimmedScheduleSearch === favoriteSearchQuery
-  const shouldSearchRuz = scheduleDrawerOpen && favoriteSearchQuery.length > 0
+  const hasFavoriteSearchQuery = favoriteSearchQuery.length > 0
+  const shouldSearchRuz = scheduleDrawerOpen && hasFavoriteSearchQuery
   const groupSearchQuery = useQuery({
     queryKey: queryKeys.groupsSearch(favoriteSearchQuery),
     queryFn: () => searchGroups(favoriteSearchQuery),
@@ -99,7 +100,7 @@ export function useScheduleSearch(
     isExternalSearchPending:
       shouldSearchRuz && (!isSearchSettled || groupSearchQuery.isPending || teacherSearchQuery.isPending),
     isExternalSearchReady:
-      shouldSearchRuz &&
+      hasFavoriteSearchQuery &&
       isSearchSettled &&
       !groupSearchQuery.isPending &&
       !teacherSearchQuery.isPending &&

@@ -18,6 +18,7 @@ import {
 import { queryKeys } from '../../shared/api/queryKeys'
 import { ActionButton } from '../../shared/ui/ActionButton'
 import { BottomDrawer } from '../../shared/ui/BottomDrawer'
+import { ConfirmDrawer } from '../../shared/ui/ConfirmDrawer'
 
 type TelegramDrawerProps = {
   open: boolean
@@ -140,33 +141,16 @@ export function TelegramDrawer({ open, status, loading, error, onClose }: Telegr
               Отвязать аккаунт
             </Button>
           </Stack>
-          <BottomDrawer
+          <ConfirmDrawer
             open={disconnectConfirmOpen}
             onClose={() => setDisconnectConfirmOpen(false)}
             title="Отвязка Telegram"
-          >
-            <Stack spacing={2.5} sx={{ px: 3, pt: 1, pb: 4 }}>
-              <Typography variant="body1">Отвязать аккаунт {formatTelegramAccount(connectedAccount)}?</Typography>
-              <Stack direction="row" spacing={2}>
-                <Button
-                  variant="outlined"
-                  size="large"
-                  disabled={disconnectMutation.isPending}
-                  onClick={() => setDisconnectConfirmOpen(false)}
-                  fullWidth
-                >
-                  Отмена
-                </Button>
-                <ActionButton
-                  color="error"
-                  loading={disconnectMutation.isPending}
-                  onClick={() => disconnectMutation.mutate()}
-                >
-                  Отвязать
-                </ActionButton>
-              </Stack>
-            </Stack>
-          </BottomDrawer>
+            message={`Отвязать аккаунт ${formatTelegramAccount(connectedAccount)}?`}
+            confirmLabel="Отвязать"
+            confirmColor="error"
+            confirmLoading={disconnectMutation.isPending}
+            onConfirm={() => disconnectMutation.mutate()}
+          />
         </Stack>
       </BottomDrawer>
     )

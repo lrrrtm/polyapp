@@ -1,6 +1,5 @@
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
@@ -15,8 +14,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { type Group, searchGroups } from '../../shared/api/ruz'
 import { queryKeys } from '../../shared/api/queryKeys'
 import { setPrimaryGroup } from '../../shared/api/users'
-import { ActionButton } from '../../shared/ui/ActionButton'
 import { BottomDrawer } from '../../shared/ui/BottomDrawer'
+import { ConfirmDrawer } from '../../shared/ui/ConfirmDrawer'
 import { EmptyState } from '../../shared/ui/EmptyState'
 import { ListItemSkeleton } from '../../shared/ui/ListItemSkeleton'
 
@@ -120,7 +119,15 @@ export function GroupDrawer({ open, currentGroup, primaryGroupId, loading, error
                   />
                 ))
               : null}
-            {showEmpty ? <EmptyState icon={SearchOffIcon} title="Ничего не найдено" sx={{ minHeight: 280 }} /> : null}
+            {showEmpty ? (
+              <EmptyState
+                icon={SearchOffIcon}
+                lottieSrc="/animations/not-found.json"
+                title="Ничего не найдено"
+                description="Попробуй изменить свой запрос"
+                sx={{ minHeight: 280 }}
+              />
+            ) : null}
             {searchQuery.isError ? (
               <Box sx={{ px: 2, py: 1 }}>
                 <Alert severity="error">Не удалось выполнить поиск.</Alert>
@@ -129,32 +136,23 @@ export function GroupDrawer({ open, currentGroup, primaryGroupId, loading, error
           </List>
         </Stack>
       </BottomDrawer>
-      <BottomDrawer
+      <ConfirmDrawer
         open={confirmOpen}
         onClose={() => {
           setConfirmOpen(false)
+        }}
+        onExited={() => {
+          setPendingGroup(null)
           setSearch('')
         }}
-        onExited={() => setPendingGroup(null)}
         title="Изменение группы"
-      >
-        <Stack spacing={2.5} sx={{ px: 3, pt: 1, pb: 4 }}>
-          <Typography variant="body1">Изменить учебную группу на {pendingGroup?.name}?</Typography>
-          <Stack direction="row" spacing={1.25}>
-            <Button variant="outlined" size="large" disabled={saveMutation.isPending} onClick={() => setConfirmOpen(false)} fullWidth>
-              Отмена
-            </Button>
-            <ActionButton
-              disabled={!pendingGroup || pendingGroup.id === primaryGroupId}
-              loading={saveMutation.isPending}
-              onClick={() => saveMutation.mutate()}
-            >
-              Сохранить
-            </ActionButton>
-          </Stack>
-          {saveMutation.isError ? <Alert severity="error">Не удалось сохранить группу. Попробуй ещё раз.</Alert> : null}
-        </Stack>
-      </BottomDrawer>
+        message={`Изменить учебную группу на ${pendingGroup?.name ?? ''}?`}
+        confirmLabel="Сохранить"
+        confirmDisabled={!pendingGroup || pendingGroup.id === primaryGroupId}
+        confirmLoading={saveMutation.isPending}
+        error={saveMutation.isError ? 'Не удалось сохранить группу. Попробуй ещё раз.' : null}
+        onConfirm={() => saveMutation.mutate()}
+      />
     </>
   )
 }

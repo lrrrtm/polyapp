@@ -45,6 +45,7 @@ type ScheduleListProps = {
   success: boolean
   stale: boolean
   emptyStateTitle: string
+  emptyStateLottieSrc?: string
   onLessonClick: (lesson: Lesson) => void
   onPointerDown: (event: PointerEvent<HTMLElement>) => void
   onPointerUp: (event: PointerEvent<HTMLElement>) => void
@@ -59,6 +60,7 @@ export function ScheduleList({
   success,
   stale,
   emptyStateTitle,
+  emptyStateLottieSrc,
   onLessonClick,
   onPointerDown,
   onPointerUp,
@@ -94,7 +96,7 @@ export function ScheduleList({
           </Alert>
         ) : null}
         {success && visibleLessons.length === 0 ? (
-          <EmptyState icon={EventBusyIcon} title={emptyStateTitle} sx={{ flex: 1, minHeight: 0 }} />
+          <EmptyState icon={EventBusyIcon} lottieSrc={emptyStateLottieSrc} title={emptyStateTitle} sx={{ flex: 1, minHeight: 0 }} />
         ) : null}
         {visibleLessons.map((lesson, index) => {
           const nextLesson = visibleLessons[index + 1]

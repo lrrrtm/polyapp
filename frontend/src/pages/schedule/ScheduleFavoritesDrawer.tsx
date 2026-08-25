@@ -20,8 +20,8 @@ import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
 import { useState } from 'react'
 import type { ScheduleItem } from '../../shared/api/users'
-import { ActionButton } from '../../shared/ui/ActionButton'
 import { BottomDrawer } from '../../shared/ui/BottomDrawer'
+import { ConfirmDrawer } from '../../shared/ui/ConfirmDrawer'
 import { DelayedSkeleton } from '../../shared/ui/DelayedSkeleton'
 import { EmptyState } from '../../shared/ui/EmptyState'
 import { ListItemSkeleton } from '../../shared/ui/ListItemSkeleton'
@@ -37,7 +37,6 @@ type ScheduleFavoritesDrawerProps = {
   open: boolean
   activeScheduleItem: ScheduleItem | null | undefined
   activeScheduleTitle: string
-  activeScheduleLoading: boolean
   scheduleItems: ScheduleItem[]
   scheduleItemQueries: SchedulePreviewQuery[]
   scheduleSearch: string
@@ -54,7 +53,7 @@ type ScheduleFavoritesDrawerProps = {
   onOpen: () => void
   onClose: () => void
   onSearchChange: (value: string) => void
-  onActiveScheduleItemChange: (item: ScheduleItem) => void
+  onActiveScheduleItemChange: (item: ScheduleItem, title: string) => void
   onAddFavorite: (result: SearchResult) => void
   onDeleteFavorite: (item: ScheduleItem) => Promise<void>
 }
@@ -68,7 +67,6 @@ export function ScheduleFavoritesDrawer({
   open,
   activeScheduleItem,
   activeScheduleTitle,
-  activeScheduleLoading,
   scheduleItems,
   scheduleItemQueries,
   scheduleSearch,
@@ -90,6 +88,7 @@ export function ScheduleFavoritesDrawer({
   onDeleteFavorite,
 }: ScheduleFavoritesDrawerProps) {
   const [deleteCandidate, setDeleteCandidate] = useState<DeleteCandidate | null>(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
 
   return (
     <>
@@ -115,7 +114,7 @@ export function ScheduleFavoritesDrawer({
           >
             <Box />
             <Typography variant="body1" noWrap>
-              {activeScheduleLoading ? <DelayedSkeleton show variant="text" width={128} /> : activeScheduleTitle}
+              {activeScheduleTitle}
             </Typography>
             <KeyboardArrowUpIcon sx={{ justifySelf: 'end' }} />
           </Button>
@@ -155,7 +154,10 @@ export function ScheduleFavoritesDrawer({
                         edge="end"
                         aria-label="Удалить из избранного"
                         disabled={deleteFavoritePending}
-                        onClick={() => setDeleteCandidate({ item, title })}
+                        onClick={() => {
+                          setDeleteCandidate({ item, title })
+                          setDeleteConfirmOpen(true)
+                        }}
                       >
                         <CloseIcon />
                       </IconButton>
@@ -166,7 +168,7 @@ export function ScheduleFavoritesDrawer({
                     selected={isSelected}
                     sx={{ pr: item.is_primary ? 2 : 7 }}
                     onClick={() => {
-                      onActiveScheduleItemChange(item)
+                      onActiveScheduleItemChange(item, title)
                       onClose()
                     }}
                   >
@@ -240,52 +242,42 @@ export function ScheduleFavoritesDrawer({
               </Box>
             ) : null}
             {isExternalSearchReady && filteredScheduleItems.length === 0 && searchResults.length === 0 ? (
-              <EmptyState icon={SearchOffIcon} title="Ничего не найдено" sx={{ minHeight: 280 }} />
+              <EmptyState
+                icon={SearchOffIcon}
+                lottieSrc="/animations/not-found.json"
+                title="Ничего не найдено"
+                description="Попробуй изменить свой запрос"
+                sx={{ minHeight: 280 }}
+              />
             ) : null}
           </List>
         </Stack>
       </BottomDrawer>
-      <BottomDrawer
-        open={deleteCandidate !== null}
+      <ConfirmDrawer
+        open={deleteConfirmOpen}
+        title="Удаление из избранного"
+        message={getDeleteFavoriteQuestion(deleteCandidate)}
+        confirmLabel="Удалить"
+        confirmColor="error"
+        confirmDisabled={!deleteCandidate}
+        confirmLoading={deleteFavoritePending}
+        error={deleteFavoriteError ? 'Не удалось удалить из избранного.' : null}
         onClose={() => {
           if (!deleteFavoritePending) {
-            setDeleteCandidate(null)
+            setDeleteConfirmOpen(false)
           }
         }}
-        title="Удаление из избранного"
-      >
-        <Stack spacing={2.5} sx={{ px: 3, pt: 1, pb: 4 }}>
-          <Typography variant="body1">{getDeleteFavoriteQuestion(deleteCandidate)}</Typography>
-          <Stack direction="row" spacing={1.25}>
-            <Button
-              variant="outlined"
-              size="large"
-              disabled={deleteFavoritePending}
-              onClick={() => setDeleteCandidate(null)}
-              fullWidth
-            >
-              Отмена
-            </Button>
-            <ActionButton
-              color="error"
-              disabled={!deleteCandidate}
-              loading={deleteFavoritePending}
-              onClick={() => {
-                if (!deleteCandidate) {
-                  return
-                }
+        onConfirm={() => {
+          if (!deleteCandidate) {
+            return
+          }
 
-                void onDeleteFavorite(deleteCandidate.item)
-                  .then(() => setDeleteCandidate(null))
-                  .catch(() => undefined)
-              }}
-            >
-              Удалить
-            </ActionButton>
-          </Stack>
-          {deleteFavoriteError ? <Alert severity="error">Не удалось удалить из избранного.</Alert> : null}
-        </Stack>
-      </BottomDrawer>
+          void onDeleteFavorite(deleteCandidate.item)
+            .then(() => setDeleteConfirmOpen(false))
+            .catch(() => undefined)
+        }}
+        onExited={() => setDeleteCandidate(null)}
+      />
     </>
   )
 }
