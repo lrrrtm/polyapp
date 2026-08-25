@@ -25,7 +25,7 @@ import { BottomDrawer } from '../../shared/ui/BottomDrawer'
 import { DelayedSkeleton } from '../../shared/ui/DelayedSkeleton'
 import { EmptyState } from '../../shared/ui/EmptyState'
 import { ListItemSkeleton } from '../../shared/ui/ListItemSkeleton'
-import { centeredFixedSurfaceSx } from '../../shared/ui/layout'
+import { appMaxWidth } from '../../shared/ui/layout'
 import { getScheduleSubtitle, getScheduleTitle, type Schedule, type SearchResult } from './schedule-utils'
 
 type SchedulePreviewQuery = {
@@ -97,9 +97,9 @@ export function ScheduleFavoritesDrawer({
         position="absolute"
         color="default"
         elevation={0}
-        sx={{ ...centeredFixedSurfaceSx, top: 'auto', bottom: 56, borderTop: 1, borderColor: 'divider' }}
+        sx={{ top: 'auto', bottom: 56, left: 0, right: 0, width: '100%', borderTop: 1, borderColor: 'divider' }}
       >
-        <Toolbar sx={{ minHeight: 56 }}>
+        <Toolbar sx={{ minHeight: 56, width: 1, maxWidth: appMaxWidth, mx: 'auto' }}>
           <Button
             color="inherit"
             fullWidth

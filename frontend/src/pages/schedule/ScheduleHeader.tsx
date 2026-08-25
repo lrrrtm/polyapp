@@ -10,7 +10,7 @@ import { DateCalendar } from '@mui/x-date-pickers/DateCalendar'
 import dayjs from 'dayjs'
 import { useMemo } from 'react'
 import { formatScheduleHeaderDate } from '../../shared/date'
-import { centeredFixedSurfaceSx } from '../../shared/ui/layout'
+import { scheduleHeaderControlsMaxWidth } from '../../shared/ui/layout'
 
 type ScheduleHeaderProps = {
   selectedDate: string
@@ -35,7 +35,7 @@ export function ScheduleHeader({
         position="absolute"
         color="default"
         elevation={0}
-        sx={{ ...centeredFixedSurfaceSx, borderBottom: 1, borderColor: 'divider' }}
+        sx={{ left: 0, right: 0, width: '100%', borderBottom: 1, borderColor: 'divider' }}
       >
         <Toolbar
           sx={{
@@ -43,6 +43,9 @@ export function ScheduleHeader({
             gridTemplateColumns: '40px 1fr 40px',
             columnGap: 1,
             minHeight: 56,
+            width: 1,
+            maxWidth: scheduleHeaderControlsMaxWidth,
+            mx: 'auto',
           }}
         >
           <IconButton

@@ -1,4 +1,5 @@
-export const appMaxWidth = 1920
+export const appMaxWidth = 1280
+export const scheduleHeaderControlsMaxWidth = 640
 
 export const centeredFixedSurfaceSx = {
   left: 0,
