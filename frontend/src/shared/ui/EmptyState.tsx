@@ -7,7 +7,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { lazy, Suspense, useState } from 'react'
-import { loadLottieSvg } from './empty-state-lotties'
+import { isEmptyStateLottieReady, loadLottieSvg, markEmptyStateLottieReady } from './empty-state-lotties'
 
 const LottieSvg = lazy(loadLottieSvg)
 const emptyStateLottieSize = 160
@@ -64,7 +64,12 @@ export function EmptyState({ icon: Icon, lottieSrc, title, description, actionLa
 }
 
 function EmptyStateLottie({ lottieSrc, reduceMotion }: { lottieSrc: string | object; reduceMotion: boolean }) {
-  const [ready, setReady] = useState(false)
+  const [ready, setReady] = useState(() => isEmptyStateLottieReady(lottieSrc))
+
+  function handleReady() {
+    markEmptyStateLottieReady(lottieSrc)
+    setReady(true)
+  }
 
   return (
     <Box sx={{ width: emptyStateLottieSize, height: emptyStateLottieSize, position: 'relative', display: 'grid', placeItems: 'center' }}>
@@ -74,7 +79,7 @@ function EmptyStateLottie({ lottieSrc, reduceMotion }: { lottieSrc: string | obj
           src={lottieSrc}
           autoplay={!reduceMotion}
           loop={!reduceMotion}
-          subscriptions={{ ready: () => setReady(true), error: () => setReady(true) }}
+          subscriptions={{ ready: handleReady, error: handleReady }}
           style={{ position: 'absolute', inset: 0, width: emptyStateLottieSize, height: emptyStateLottieSize, opacity: ready ? 1 : 0 }}
           aria-hidden
         />

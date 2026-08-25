@@ -1,6 +1,8 @@
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
 import List from '@mui/material/List'
+import ListItem from '@mui/material/ListItem'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
@@ -30,6 +32,50 @@ type GroupDrawerProps = {
 }
 
 export function GroupDrawer({ open, currentGroup, primaryGroupId, loading, error, onClose, onSaved }: GroupDrawerProps) {
+  const [searchOpen, setSearchOpen] = useState(false)
+  const showSearch = searchOpen || !currentGroup
+
+  useEffect(() => {
+    if (!open) {
+      setSearchOpen(false)
+    }
+  }, [open])
+
+  return (
+    <>
+      <BottomDrawer open={open && !showSearch} onClose={onClose} title="Основная группа">
+        <Stack spacing={3} sx={{ px: 2, pb: 3 }}>
+          <Stack spacing={1}>
+            {loading ? (
+              <ListItemSkeleton show rows={1} />
+            ) : currentGroup ? (
+              <List disablePadding>
+                <GroupListItem group={currentGroup} />
+              </List>
+            ) : (
+              <Typography variant="body1">Группа не выбрана</Typography>
+            )}
+            {error ? <Alert severity="error">Не удалось загрузить текущую группу.</Alert> : null}
+          </Stack>
+          <Button variant="contained" size="large" onClick={() => setSearchOpen(true)}>
+            {currentGroup ? 'Изменить группу' : 'Выбрать группу'}
+          </Button>
+        </Stack>
+      </BottomDrawer>
+      <GroupSearchDrawer
+        open={open && showSearch}
+        currentGroup={currentGroup}
+        primaryGroupId={primaryGroupId}
+        error={error}
+        onBack={currentGroup ? () => setSearchOpen(false) : onClose}
+        onClose={onClose}
+        onSaved={onSaved}
+      />
+    </>
+  )
+}
+
+function GroupSearchDrawer({ open, currentGroup, primaryGroupId, error, onBack, onClose, onSaved }: GroupDrawerProps & { onBack: () => void }) {
   const queryClient = useQueryClient()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [pendingGroup, setPendingGroup] = useState<Group | null>(null)
@@ -54,6 +100,7 @@ export function GroupDrawer({ open, currentGroup, primaryGroupId, loading, error
       }
       setConfirmOpen(false)
       setPendingGroup(null)
+      onBack()
       onClose()
     },
   })
@@ -82,7 +129,7 @@ export function GroupDrawer({ open, currentGroup, primaryGroupId, loading, error
 
   return (
     <>
-      <BottomDrawer open={open} onClose={onClose} title="Учебная группа" height="70vh">
+      <BottomDrawer open={open} onClose={onBack} title="Выбор группы" height="70vh">
         <Stack sx={{ height: 1 }}>
           <Box sx={{ px: 2, pb: 1 }}>
             <TextField
@@ -98,7 +145,6 @@ export function GroupDrawer({ open, currentGroup, primaryGroupId, loading, error
             />
           </Box>
           <List sx={{ overflowY: 'auto', pb: 2 }}>
-            {loading ? <ListItemSkeleton show rows={1} /> : null}
             {showCurrentHint ? <GroupListItem group={currentGroup} selected onClick={() => undefined} /> : null}
             {searchQuery.isFetching ? <GroupResultsLoading show /> : null}
             {searchReady
@@ -113,7 +159,7 @@ export function GroupDrawer({ open, currentGroup, primaryGroupId, loading, error
                       }
 
                       setPendingGroup(group)
-                      onClose()
+                      onBack()
                       setConfirmOpen(true)
                     }}
                   />
@@ -146,7 +192,7 @@ export function GroupDrawer({ open, currentGroup, primaryGroupId, loading, error
           setSearch('')
         }}
         title="Изменение группы"
-        message={`Изменить учебную группу на ${pendingGroup?.name ?? ''}?`}
+        message={`Изменить основную группу на ${pendingGroup?.name ?? ''}?`}
         confirmLabel="Сохранить"
         confirmDisabled={!pendingGroup || pendingGroup.id === primaryGroupId}
         confirmLoading={saveMutation.isPending}
@@ -157,9 +203,9 @@ export function GroupDrawer({ open, currentGroup, primaryGroupId, loading, error
   )
 }
 
-function GroupListItem({ group, selected, onClick }: { group: Group; selected: boolean; onClick: () => void }) {
-  return (
-    <ListItemButton selected={selected} onClick={onClick}>
+function GroupListItem({ group, selected = false, onClick }: { group: Group; selected?: boolean; onClick?: () => void }) {
+  const content = (
+    <>
       <ListItemIcon>
         <SchoolIcon color="action" />
       </ListItemIcon>
@@ -173,6 +219,16 @@ function GroupListItem({ group, selected, onClick }: { group: Group; selected: b
           ) : null
         }
       />
+    </>
+  )
+
+  if (!onClick) {
+    return <ListItem>{content}</ListItem>
+  }
+
+  return (
+    <ListItemButton selected={selected} onClick={onClick}>
+      {content}
     </ListItemButton>
   )
 }

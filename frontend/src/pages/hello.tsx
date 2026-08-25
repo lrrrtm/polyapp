@@ -20,6 +20,7 @@ import { createCurrentUser, getSessionStatus, setPrimaryGroup, setUserProfileApp
 import { ActionButton } from '../shared/ui/ActionButton'
 import { AppAutocomplete } from '../shared/ui/AppAutocomplete'
 import { ApplicantCodeStep } from '../shared/ui/ApplicantCodeStep'
+import { CenteredAlert } from '../shared/ui/CenteredAlert'
 import { PageSkeleton } from '../shared/ui/PageSkeleton'
 
 export function HelloPage() {
@@ -96,11 +97,7 @@ export function HelloPage() {
   }
 
   if (sessionQuery.isError) {
-    return (
-      <Container maxWidth="sm" sx={{ minHeight: '100vh', display: 'grid', alignItems: 'center' }}>
-        <Alert severity="error">Не удалось проверить сессию.</Alert>
-      </Container>
-    )
+    return <CenteredAlert message="Не удалось проверить сессию." />
   }
 
   if (sessionQuery.data.hasUser && step === 'hello') {

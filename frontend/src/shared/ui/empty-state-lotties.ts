@@ -10,6 +10,21 @@ export function loadLottieSvg() {
 }
 
 let emptyStateLottiesPreload: Promise<unknown> | undefined
+const readyLottieSources = new Set<string>()
+const readyLottieObjects = new WeakSet<object>()
+
+export function isEmptyStateLottieReady(src: string | object) {
+  return typeof src === 'string' ? readyLottieSources.has(src) : readyLottieObjects.has(src)
+}
+
+export function markEmptyStateLottieReady(src: string | object) {
+  if (typeof src === 'string') {
+    readyLottieSources.add(src)
+    return
+  }
+
+  readyLottieObjects.add(src)
+}
 
 export function preloadEmptyStateLotties() {
   emptyStateLottiesPreload ??= Promise.allSettled([
@@ -19,6 +34,8 @@ export function preloadEmptyStateLotties() {
         if (!response.ok) {
           throw new Error(`Failed to preload ${src}`)
         }
+
+        markEmptyStateLottieReady(src)
       }),
     ),
   ])

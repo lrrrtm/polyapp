@@ -132,7 +132,7 @@ export function SettingsPage() {
             </Typography>
             <List disablePadding>
               <SettingsRow
-                title="Учебная группа"
+                title="Основная группа"
                 subtitle={currentGroupSubtitle}
                 onClick={() => setGroupDrawerOpen(true)}
               />
