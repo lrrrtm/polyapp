@@ -32,6 +32,10 @@ export function addDays(date: string, days: number): string {
   return toIsoDate(nextDate)
 }
 
+export function isSunday(date: string): boolean {
+  return new Date(`${date}T12:00:00`).getDay() === 0
+}
+
 export function getWeekStartDate(date: string): string {
   const currentDate = new Date(`${date}T12:00:00`)
   const day = currentDate.getDay()

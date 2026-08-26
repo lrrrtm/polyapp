@@ -5,6 +5,7 @@ import Typography from '@mui/material/Typography'
 import type { SxProps, Theme } from '@mui/material/styles'
 import type { ReactNode } from 'react'
 import { appMaxWidth } from './layout'
+import { useBackOverlay } from './useBackOverlay'
 
 type BottomDrawerProps = {
   open: boolean
@@ -27,11 +28,13 @@ export function BottomDrawer({
   children,
   contentSx,
 }: BottomDrawerProps) {
+  const handleClose = useBackOverlay(open, onClose)
+
   return (
     <SwipeableDrawer
       anchor="bottom"
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       onOpen={() => undefined}
       disableDiscovery
       slotProps={{

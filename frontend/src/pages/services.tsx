@@ -22,6 +22,7 @@ import { AppScreen } from '../shared/ui/AppScreen'
 import { BottomDrawer } from '../shared/ui/BottomDrawer'
 import { CenteredAlert } from '../shared/ui/CenteredAlert'
 import { ConfirmDrawer } from '../shared/ui/ConfirmDrawer'
+import { CopyToClipboardButton } from '../shared/ui/CopyToClipboardButton'
 import { PageSkeleton } from '../shared/ui/PageSkeleton'
 import { centeredFixedSurfaceSx } from '../shared/ui/layout'
 
@@ -400,6 +401,8 @@ function DormitoryPaymentStatus({
   lookup: Awaited<ReturnType<typeof lookupDormitoryPayment>>
   amountDue: number
 }) {
+  const contract = lookup.contract ?? 'Не указан'
+
   if (!lookup.valid) {
     return <Alert severity="warning">Номер договора не найден. Проверь его и попробуй снова.</Alert>
   }
@@ -410,7 +413,12 @@ function DormitoryPaymentStatus({
         <Typography variant="body2" color="text.secondary">
           Номер договора
         </Typography>
-        <Typography variant="body1">{lookup.contract ?? 'Не указан'}</Typography>
+        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', minWidth: 0 }}>
+          <Typography variant="body1" noWrap sx={{ minWidth: 0 }}>
+            {contract}
+          </Typography>
+          {lookup.contract ? <CopyToClipboardButton value={lookup.contract} sx={{ flexShrink: 0 }} /> : null}
+        </Stack>
       </Stack>
       <Divider />
       <Stack spacing={0.5}>

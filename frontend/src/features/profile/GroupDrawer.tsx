@@ -67,7 +67,7 @@ export function GroupDrawer({ open, currentGroup, primaryGroupId, loading, error
         currentGroup={currentGroup}
         primaryGroupId={primaryGroupId}
         error={error}
-        onBack={currentGroup ? () => setSearchOpen(false) : onClose}
+        onBack={onClose}
         onClose={onClose}
         onSaved={onSaved}
       />
@@ -75,7 +75,7 @@ export function GroupDrawer({ open, currentGroup, primaryGroupId, loading, error
   )
 }
 
-function GroupSearchDrawer({ open, currentGroup, primaryGroupId, error, onBack, onClose, onSaved }: GroupDrawerProps & { onBack: () => void }) {
+function GroupSearchDrawer({ open, primaryGroupId, error, onBack, onClose, onSaved }: GroupDrawerProps & { onBack: () => void }) {
   const queryClient = useQueryClient()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [pendingGroup, setPendingGroup] = useState<Group | null>(null)
@@ -87,8 +87,8 @@ function GroupSearchDrawer({ open, currentGroup, primaryGroupId, error, onBack, 
     enabled: open && debouncedSearch.length > 0,
   })
   const groupOptions = useMemo(
-    () => dedupeGroups([currentGroup, ...(searchQuery.data ?? [])]),
-    [currentGroup, searchQuery.data],
+    () => dedupeGroups(searchQuery.data ?? []).filter((group) => group.id !== primaryGroupId),
+    [primaryGroupId, searchQuery.data],
   )
   const saveMutation = useMutation({
     mutationFn: () => setPrimaryGroup(pendingGroup?.id ?? 0),
@@ -125,7 +125,7 @@ function GroupSearchDrawer({ open, currentGroup, primaryGroupId, error, onBack, 
 
   const searchReady = debouncedSearch.length > 0 && !searchQuery.isFetching && !searchQuery.isError
   const showEmpty = searchReady && groupOptions.length === 0
-  const showCurrentHint = !search.trim() && currentGroup
+  const showStartTyping = !search.trim()
 
   return (
     <>
@@ -145,19 +145,16 @@ function GroupSearchDrawer({ open, currentGroup, primaryGroupId, error, onBack, 
             />
           </Box>
           <List sx={{ overflowY: 'auto', pb: 2 }}>
-            {showCurrentHint ? <GroupListItem group={currentGroup} selected onClick={() => undefined} /> : null}
+            {showStartTyping ? (
+              <EmptyState lottieSrc="/animations/start-typing-group.json" title="Начни вводить номер группы" sx={{ minHeight: 280 }} />
+            ) : null}
             {searchQuery.isFetching ? <GroupResultsLoading show /> : null}
             {searchReady
               ? groupOptions.map((group) => (
                   <GroupListItem
                     key={group.id}
                     group={group}
-                    selected={group.id === primaryGroupId}
                     onClick={() => {
-                      if (group.id === primaryGroupId) {
-                        return
-                      }
-
                       setPendingGroup(group)
                       onBack()
                       setConfirmOpen(true)

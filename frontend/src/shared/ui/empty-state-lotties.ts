@@ -3,6 +3,7 @@ export const emptyStateLottieSources = [
   '/animations/lessons-finished.json',
   '/animations/no-lessons.json',
   '/animations/not-found.json',
+  '/animations/start-typing-group.json',
 ] as const
 
 export function loadLottieSvg() {

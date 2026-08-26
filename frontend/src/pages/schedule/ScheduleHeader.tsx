@@ -8,9 +8,10 @@ import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar'
 import dayjs from 'dayjs'
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { formatScheduleHeaderDate } from '../../shared/date'
 import { scheduleHeaderControlsMaxWidth } from '../../shared/ui/layout'
+import { useBackOverlay } from '../../shared/ui/useBackOverlay'
 
 type ScheduleHeaderProps = {
   selectedDate: string
@@ -28,6 +29,8 @@ export function ScheduleHeader({
   onMoveSelectedDate,
 }: ScheduleHeaderProps) {
   const calendarValue = useMemo(() => dayjs(selectedDate), [selectedDate])
+  const closeDatePopover = useCallback(() => onDateAnchorChange(null), [onDateAnchorChange])
+  const handleDatePopoverClose = useBackOverlay(dateAnchor !== null, closeDatePopover)
 
   return (
     <>
@@ -85,12 +88,13 @@ export function ScheduleHeader({
       <Popover
         open={dateAnchor !== null}
         anchorEl={dateAnchor}
-        onClose={() => onDateAnchorChange(null)}
+        onClose={handleDatePopoverClose}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         transformOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
         <DateCalendar
           value={calendarValue}
+          shouldDisableDate={(value) => value.day() === 0}
           onChange={(value) => {
             if (value?.isValid()) {
               onSelectedDateChange(value.format('YYYY-MM-DD'))

@@ -7,7 +7,7 @@ import { GroupDrawer } from '../features/profile/GroupDrawer'
 import { getBuildingMapLinks } from '../shared/api/buildings'
 import { queryKeys } from '../shared/api/queryKeys'
 import { useRequiredUser } from '../shared/api/useRequiredUser'
-import { addDays, toIsoDate } from '../shared/date'
+import { addDays, isSunday, toIsoDate } from '../shared/date'
 import { AppScreen } from '../shared/ui/AppScreen'
 import { CenteredAlert } from '../shared/ui/CenteredAlert'
 import { EmptyState } from '../shared/ui/EmptyState'
@@ -28,7 +28,7 @@ export function SchedulePage() {
     showBreaks,
   } = useUserPreferences()
   const user = useRequiredUser()
-  const [selectedDate, setSelectedDate] = useState(() => toIsoDate(new Date()))
+  const [selectedDate, setSelectedDate] = useState(() => getScheduleDate(toIsoDate(new Date())))
   const [dateAnchor, setDateAnchor] = useState<HTMLButtonElement | null>(null)
   const [scheduleDrawerOpen, setScheduleDrawerOpen] = useState(false)
   const [primaryGroupDrawerOpen, setPrimaryGroupDrawerOpen] = useState(false)
@@ -119,7 +119,7 @@ export function SchedulePage() {
   }, [activeScheduleTitle])
 
   function moveSelectedDate(days: number) {
-    setSelectedDate((currentDate) => addDays(currentDate, days))
+    setSelectedDate((currentDate) => getScheduleDate(addDays(currentDate, days), days))
   }
 
   function handlePointerDown(event: PointerEvent<HTMLElement>) {
@@ -187,7 +187,7 @@ export function SchedulePage() {
         selectedDate={selectedDate}
         dateAnchor={dateAnchor}
         onDateAnchorChange={setDateAnchor}
-        onSelectedDateChange={setSelectedDate}
+        onSelectedDateChange={(date) => setSelectedDate(getScheduleDate(date))}
         onMoveSelectedDate={moveSelectedDate}
       />
       <ScheduleList
@@ -243,4 +243,8 @@ export function SchedulePage() {
       />
     </AppScreen>
   )
+}
+
+function getScheduleDate(date: string, direction = 1): string {
+  return isSunday(date) ? addDays(date, direction > 0 ? 1 : -1) : date
 }
