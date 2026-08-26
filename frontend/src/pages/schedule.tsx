@@ -9,6 +9,7 @@ import { queryKeys } from '../shared/api/queryKeys'
 import { getScheduleChanges } from '../shared/api/scheduleChanges'
 import { useRequiredUser } from '../shared/api/useRequiredUser'
 import { addDays, isSunday, toIsoDate } from '../shared/date'
+import { vibrateTap } from '../shared/haptics'
 import { AppScreen } from '../shared/ui/AppScreen'
 import { CenteredAlert } from '../shared/ui/CenteredAlert'
 import { EmptyState } from '../shared/ui/EmptyState'
@@ -155,6 +156,7 @@ export function SchedulePage() {
   }, [activeScheduleTitle])
 
   function moveSelectedDate(days: number) {
+    vibrateTap()
     setSelectedDate((currentDate) => getScheduleDate(addDays(currentDate, days), days))
   }
 
@@ -233,7 +235,10 @@ export function SchedulePage() {
         selectedDate={selectedDate}
         dateAnchor={dateAnchor}
         onDateAnchorChange={setDateAnchor}
-        onSelectedDateChange={(date) => setSelectedDate(getScheduleDate(date))}
+        onSelectedDateChange={(date) => {
+          vibrateTap()
+          setSelectedDate(getScheduleDate(date))
+        }}
         onMoveSelectedDate={moveSelectedDate}
       />
       <ScheduleHeaderTour
@@ -254,6 +259,7 @@ export function SchedulePage() {
         emptyStateTitle={emptyStateTitle}
         emptyStateLottieSrc={emptyStateLottieSrc}
         onLessonClick={(item) => {
+          vibrateTap()
           setSelectedLessonItem(item)
           setLessonDrawerOpen(true)
         }}
@@ -278,7 +284,10 @@ export function SchedulePage() {
         addFavoriteError={addFavoriteMutation.isError}
         deleteFavoritePending={deleteFavoriteMutation.isPending}
         deleteFavoriteError={deleteFavoriteMutation.isError}
-        onOpen={() => setScheduleDrawerOpen(true)}
+        onOpen={() => {
+          vibrateTap()
+          setScheduleDrawerOpen(true)
+        }}
         onClose={() => setScheduleDrawerOpen(false)}
         onSearchChange={setScheduleSearch}
         onActiveScheduleItemChange={(item, title) => {

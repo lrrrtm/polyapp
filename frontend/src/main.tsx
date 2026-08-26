@@ -9,6 +9,7 @@ import '@fontsource/inter/latin-600.css'
 import { AppProviders } from './app/providers'
 import './app/config'
 import './index.css'
+import './register-service-worker'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

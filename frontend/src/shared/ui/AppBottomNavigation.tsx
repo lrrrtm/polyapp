@@ -8,6 +8,7 @@ import BottomNavigationAction from '@mui/material/BottomNavigationAction'
 import { useTheme } from '@mui/material/styles'
 import { useLocation, useNavigate } from 'react-router'
 import { appConfig } from '../../app/config'
+import { vibrateTap } from '../haptics'
 
 const navigationItems = [
   ...(appConfig.VITE_ADMISSIONS_ENABLED
@@ -63,6 +64,7 @@ export function AppBottomNavigation() {
         value={currentValue}
         onChange={(_, value: string) => {
           if (value !== currentValue) {
+            vibrateTap()
             navigate(value)
           }
         }}
