@@ -58,7 +58,7 @@ export function LessonDetailsDrawer({ open, item, mapUrl, onClose, onExited }: L
             </Typography>
           </Stack>
         </Stack>
-        <Stack spacing={1.25}>
+        <Stack spacing={1.25} data-tour="lesson-actions">
           <Stack direction="row" spacing={1.25}>
             <Button variant="contained" size="large" disabled={!lmsUrl} onClick={() => openExternalUrl(lmsUrl)} fullWidth>
               СДО
@@ -87,7 +87,7 @@ function LessonChanges({ changes }: { changes: LessonChangeDetail[] }) {
 
   if (changes.some((change) => change.kind === 'removed')) {
     return (
-      <Alert severity="info" variant="filled">
+      <Alert severity="info" variant="filled" data-tour="lesson-changes">
         Занятие отменено
       </Alert>
     )
@@ -95,14 +95,14 @@ function LessonChanges({ changes }: { changes: LessonChangeDetail[] }) {
 
   if (changes.some((change) => change.kind === 'added')) {
     return (
-      <Alert severity="info" variant="filled">
+      <Alert severity="info" variant="filled" data-tour="lesson-changes">
         Занятие добавлено в расписание
       </Alert>
     )
   }
 
   return (
-    <Alert severity="info" variant="filled">
+    <Alert severity="info" variant="filled" data-tour="lesson-changes">
       <Stack spacing={0.5}>
         {parameterChanges.map((change) => (
           <Typography key={`${change.kind}:${change.before}:${change.after}`} variant="body2">

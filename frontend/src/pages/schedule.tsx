@@ -16,6 +16,7 @@ import { PageSkeleton } from '../shared/ui/PageSkeleton'
 import { LessonDetailsDrawer } from './schedule/LessonDetailsDrawer'
 import { ScheduleFavoritesDrawer } from './schedule/ScheduleFavoritesDrawer'
 import { ScheduleHeader } from './schedule/ScheduleHeader'
+import { ScheduleHeaderTour } from './schedule/ScheduleHeaderTour'
 import { ScheduleList } from './schedule/ScheduleList'
 import {
   buildScheduleLessonItems,
@@ -40,6 +41,7 @@ export function SchedulePage() {
   const [primaryGroupDrawerOpen, setPrimaryGroupDrawerOpen] = useState(false)
   const [selectedLessonItem, setSelectedLessonItem] = useState<ScheduleLessonItem | null>(null)
   const [lessonDrawerOpen, setLessonDrawerOpen] = useState(false)
+  const [scheduleTourActive, setScheduleTourActive] = useState(false)
   const [lastKnownActiveScheduleTitle, setLastKnownActiveScheduleTitle] = useState('Расписание')
   const [now, setNow] = useState(() => new Date())
   const swipeStartX = useRef<number | null>(null)
@@ -139,6 +141,7 @@ export function SchedulePage() {
       ),
     [activeScheduleItem, scheduleChangeEvents, selectedDate, visibleLessons],
   )
+  const displayedScheduleLessonItems = scheduleTourActive ? [scheduleTourLessonMock] : scheduleLessonItems
 
   useEffect(() => {
     const intervalId = window.setInterval(() => setNow(new Date()), 1000)
@@ -156,10 +159,20 @@ export function SchedulePage() {
   }
 
   function handlePointerDown(event: PointerEvent<HTMLElement>) {
+    if (event.pointerType !== 'touch') {
+      swipeStartX.current = null
+      return
+    }
+
     swipeStartX.current = event.clientX
   }
 
   function handlePointerUp(event: PointerEvent<HTMLElement>) {
+    if (event.pointerType !== 'touch') {
+      swipeStartX.current = null
+      return
+    }
+
     if (swipeStartX.current === null) {
       return
     }
@@ -223,14 +236,21 @@ export function SchedulePage() {
         onSelectedDateChange={(date) => setSelectedDate(getScheduleDate(date))}
         onMoveSelectedDate={moveSelectedDate}
       />
+      <ScheduleHeaderTour
+        lessonDetailsOpen={lessonDrawerOpen}
+        scheduleDrawerOpen={scheduleDrawerOpen}
+        onActiveChange={setScheduleTourActive}
+        onLessonDetailsClose={() => setLessonDrawerOpen(false)}
+        onScheduleDrawerClose={() => setScheduleDrawerOpen(false)}
+      />
       <ScheduleList
-        items={scheduleLessonItems}
+        items={displayedScheduleLessonItems}
         showBreaks={showBreaks}
         now={now}
-        loading={activeScheduleQuery.isPending}
-        error={activeScheduleQuery.isError}
-        success={activeScheduleQuery.isSuccess}
-        stale={scheduleStale}
+        loading={scheduleTourActive ? false : activeScheduleQuery.isPending}
+        error={scheduleTourActive ? false : activeScheduleQuery.isError}
+        success={scheduleTourActive ? true : activeScheduleQuery.isSuccess}
+        stale={scheduleTourActive ? false : scheduleStale}
         emptyStateTitle={emptyStateTitle}
         emptyStateLottieSrc={emptyStateLottieSrc}
         onLessonClick={(item) => {
@@ -242,6 +262,7 @@ export function SchedulePage() {
       />
       <ScheduleFavoritesDrawer
         open={scheduleDrawerOpen}
+        tourMock={scheduleTourActive && scheduleDrawerOpen}
         activeScheduleItem={activeScheduleItem}
         activeScheduleTitle={activeScheduleTitle === 'Расписание' ? lastKnownActiveScheduleTitle : activeScheduleTitle}
         scheduleItems={scheduleItems}
@@ -276,6 +297,20 @@ export function SchedulePage() {
       />
     </AppScreen>
   )
+}
+
+const scheduleTourLessonMock: ScheduleLessonItem = {
+  id: 'tour:lesson-card',
+  lesson: null,
+  summary: {
+    subject: 'Проектирование интерфейсов',
+    lessonType: 'Практика',
+    timeStart: '10:40',
+    timeEnd: '12:10',
+    teachers: 'Иванова Анна Сергеевна',
+    auditories: 'Главный учебный корпус, ауд. 305',
+  },
+  changes: [{ kind: 'time', before: '09:00' }],
 }
 
 function getScheduleDate(date: string, direction = 1): string {

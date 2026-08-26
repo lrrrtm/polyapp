@@ -54,6 +54,7 @@ export function ScheduleHeader({
           <IconButton
             color="inherit"
             aria-label="Предыдущий день"
+            data-tour="schedule-prev-day"
             onClick={() => onMoveSelectedDate(-1)}
             sx={{ justifySelf: 'start' }}
           >
@@ -61,6 +62,7 @@ export function ScheduleHeader({
           </IconButton>
           <Button
             color="inherit"
+            data-tour="schedule-date"
             onClick={(event) => onDateAnchorChange(event.currentTarget)}
             sx={{
               justifySelf: 'center',
@@ -78,6 +80,7 @@ export function ScheduleHeader({
           <IconButton
             color="inherit"
             aria-label="Следующий день"
+            data-tour="schedule-next-day"
             onClick={() => onMoveSelectedDate(1)}
             sx={{ justifySelf: 'end' }}
           >

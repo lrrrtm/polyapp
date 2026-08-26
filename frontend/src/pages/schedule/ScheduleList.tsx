@@ -112,6 +112,7 @@ export function ScheduleList({
           return (
             <Box key={item.id}>
               <ButtonBase
+                data-tour={index === 0 ? 'schedule-lesson-card' : undefined}
                 onClick={() => onLessonClick(item)}
                 sx={{
                   display: 'block',

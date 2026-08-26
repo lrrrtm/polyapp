@@ -10,7 +10,7 @@ import { lazy, Suspense, useState } from 'react'
 import { isEmptyStateLottieReady, loadLottieSvg, markEmptyStateLottieReady } from './empty-state-lotties'
 
 const LottieSvg = lazy(loadLottieSvg)
-const emptyStateLottieSize = 160
+const emptyStateLottieSize = 144
 
 type EmptyStateBaseProps = {
   title: string
@@ -44,7 +44,7 @@ export function EmptyState({ icon: Icon, lottieSrc, title, description, actionLa
           <Icon color="disabled" sx={{ fontSize: 56 }} aria-hidden />
         ) : null}
         <Stack spacing={0.5} sx={{ alignItems: 'center' }}>
-          <Typography variant="h6" component="p">
+          <Typography variant="subtitle1" component="p" sx={{ fontWeight: 600 }}>
             {title}
           </Typography>
           {description ? (

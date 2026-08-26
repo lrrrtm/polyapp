@@ -4,9 +4,7 @@ import Button from '@mui/material/Button'
 import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
 import ListItemButton from '@mui/material/ListItemButton'
-import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
-import SchoolIcon from '@mui/icons-material/School'
 import SearchOffIcon from '@mui/icons-material/SearchOff'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
@@ -129,7 +127,7 @@ function GroupSearchDrawer({ open, primaryGroupId, error, onBack, onClose, onSav
 
   return (
     <>
-      <BottomDrawer open={open} onClose={onBack} title="Выбор группы" height="70vh">
+      <BottomDrawer open={open} onClose={onBack} title="Выбор группы" height="90dvh" maxHeight="90dvh">
         <Stack sx={{ height: 1 }}>
           <Box sx={{ px: 2, pb: 1 }}>
             <TextField
@@ -190,7 +188,7 @@ function GroupSearchDrawer({ open, primaryGroupId, error, onBack, onClose, onSav
         }}
         title="Изменение группы"
         message={`Изменить основную группу на ${pendingGroup?.name ?? ''}?`}
-        confirmLabel="Сохранить"
+        confirmLabel="Изменить"
         confirmDisabled={!pendingGroup || pendingGroup.id === primaryGroupId}
         confirmLoading={saveMutation.isPending}
         error={saveMutation.isError ? 'Не удалось сохранить группу. Попробуй ещё раз.' : null}
@@ -202,21 +200,16 @@ function GroupSearchDrawer({ open, primaryGroupId, error, onBack, onClose, onSav
 
 function GroupListItem({ group, selected = false, onClick }: { group: Group; selected?: boolean; onClick?: () => void }) {
   const content = (
-    <>
-      <ListItemIcon>
-        <SchoolIcon color="action" />
-      </ListItemIcon>
-      <ListItemText
-        primary={<Typography noWrap>{group.name}</Typography>}
-        secondary={
-          group.faculty?.name ? (
-            <Typography variant="body2" color="text.secondary" noWrap>
-              {group.faculty.name}
-            </Typography>
-          ) : null
-        }
-      />
-    </>
+    <ListItemText
+      primary={<Typography noWrap>{group.name}</Typography>}
+      secondary={
+        group.faculty?.name ? (
+          <Typography variant="body2" color="text.secondary" noWrap>
+            {group.faculty.name}
+          </Typography>
+        ) : null
+      }
+    />
   )
 
   if (!onClick) {

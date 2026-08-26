@@ -35,6 +35,7 @@ type SchedulePreviewQuery = {
 
 type ScheduleFavoritesDrawerProps = {
   open: boolean
+  tourMock?: boolean
   activeScheduleItem: ScheduleItem | null | undefined
   activeScheduleTitle: string
   scheduleItems: ScheduleItem[]
@@ -65,6 +66,7 @@ type DeleteCandidate = {
 
 export function ScheduleFavoritesDrawer({
   open,
+  tourMock = false,
   activeScheduleItem,
   activeScheduleTitle,
   scheduleItems,
@@ -98,25 +100,27 @@ export function ScheduleFavoritesDrawer({
         elevation={0}
         sx={{ top: 'auto', bottom: 56, left: 0, right: 0, width: '100%', borderTop: 1, borderColor: 'divider' }}
       >
-        <Toolbar sx={{ minHeight: 56, width: 1, maxWidth: appMaxWidth, mx: 'auto' }}>
+        <Toolbar sx={{ justifyContent: 'center', minHeight: 56, width: 1, maxWidth: appMaxWidth, mx: 'auto' }}>
           <Button
             color="inherit"
-            fullWidth
+            data-tour="schedule-picker"
             onClick={onOpen}
             sx={{
-              display: 'grid',
-              gridTemplateColumns: '32px 1fr 32px',
+              display: 'flex',
+              gap: 1,
+              justifyContent: 'center',
+              maxWidth: 1,
               minWidth: 0,
+              px: 1.5,
               py: 0.75,
               textAlign: 'center',
               textTransform: 'none',
             }}
           >
-            <Box />
-            <Typography variant="body1" noWrap>
+            <Typography variant="body1" noWrap sx={{ minWidth: 0 }}>
               {activeScheduleTitle}
             </Typography>
-            <KeyboardArrowUpIcon sx={{ justifySelf: 'end' }} />
+            <KeyboardArrowUpIcon />
           </Button>
         </Toolbar>
       </AppBar>
@@ -132,8 +136,8 @@ export function ScheduleFavoritesDrawer({
               size="small"
             />
           </Box>
-          <List sx={{ overflowY: 'auto', pb: 2 }}>
-            {filteredScheduleItems.map((item) => {
+          <List data-tour={tourMock ? 'schedule-favorites-content' : undefined} sx={{ overflowY: 'auto', pb: 2 }}>
+            {tourMock ? <TourFavoritesList /> : filteredScheduleItems.map((item) => {
               const index = scheduleItems.findIndex(
                 (scheduleItem) => scheduleItem.item_type === item.item_type && scheduleItem.ruz_id === item.ruz_id,
               )
@@ -197,13 +201,13 @@ export function ScheduleFavoritesDrawer({
                 </ListItem>
               )
             })}
-            {isExternalSearchPending ? <SearchResultsLoading show /> : null}
+            {!tourMock && isExternalSearchPending ? <SearchResultsLoading show /> : null}
             {searchError ? (
               <Box sx={{ px: 2, py: 1 }}>
                 <Alert severity="error">Не удалось выполнить поиск.</Alert>
               </Box>
             ) : null}
-            {isExternalSearchReady && searchResults.length > 0
+            {!tourMock && isExternalSearchReady && searchResults.length > 0
               ? searchResults.map((result) => (
                   <ListItemButton
                     key={`${result.itemType}-${result.ruzId}`}
@@ -236,12 +240,12 @@ export function ScheduleFavoritesDrawer({
                   </ListItemButton>
                 ))
               : null}
-            {shouldSearchRuz && addFavoriteError ? (
+            {!tourMock && shouldSearchRuz && addFavoriteError ? (
               <Box sx={{ px: 2, py: 1 }}>
                 <Alert severity="error">Не удалось добавить в избранное.</Alert>
               </Box>
             ) : null}
-            {isExternalSearchReady && filteredScheduleItems.length === 0 && searchResults.length === 0 ? (
+            {!tourMock && isExternalSearchReady && filteredScheduleItems.length === 0 && searchResults.length === 0 ? (
               <EmptyState
                 icon={SearchOffIcon}
                 lottieSrc="/animations/not-found.json"
@@ -278,6 +282,37 @@ export function ScheduleFavoritesDrawer({
         }}
         onExited={() => setDeleteCandidate(null)}
       />
+    </>
+  )
+}
+
+const tourFavoriteItems = [
+  { type: 'group', title: '5140904/60101', subtitle: 'Институт компьютерных наук' },
+  { type: 'group', title: '5030102/30001', subtitle: 'Институт машиностроения' },
+  { type: 'teacher', title: 'Иванова Анна Сергеевна', subtitle: 'Высшая школа программной инженерии' },
+  { type: 'teacher', title: 'Петров Дмитрий Олегович', subtitle: 'Кафедра прикладной математики' },
+] as const
+
+function TourFavoritesList() {
+  return (
+    <>
+      {tourFavoriteItems.map((item) => (
+        <ListItem key={`${item.type}-${item.title}`} disablePadding>
+          <ListItemButton>
+            <ListItemIcon>
+              {item.type === 'teacher' ? <PersonIcon color="action" /> : <SchoolIcon color="action" />}
+            </ListItemIcon>
+            <ListItemText
+              primary={<Typography noWrap>{item.title}</Typography>}
+              secondary={
+                <Typography variant="body2" color="text.secondary" noWrap>
+                  {item.subtitle}
+                </Typography>
+              }
+            />
+          </ListItemButton>
+        </ListItem>
+      ))}
     </>
   )
 }
