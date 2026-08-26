@@ -235,9 +235,9 @@ def render_schedule_change_message(group_name: str, change: dict, bucket: str) -
     subject = lesson.get("subject") or "Занятие"
     when = format_lesson_time(lesson)
     title = {
-        "lesson_added": "➕ Пара добавлена",
-        "lesson_removed": "❌ Пара отменена",
-        "time_changed": "⏰ Пара перенесена",
+        "lesson_added": "➕ Занятие добавлено",
+        "lesson_removed": "❌ Занятие отменено",
+        "time_changed": "⏰ Занятие перенесено",
         "auditorium_changed": "📍 Изменилась аудитория",
         "teacher_changed": "👤 Изменился преподаватель",
     }[bucket]

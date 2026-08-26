@@ -169,7 +169,7 @@ export function SettingsPage() {
                 sx={{ alignItems: 'center', justifyContent: 'space-between', py: 1.75 }}
               >
                 <Stack spacing={0.5} sx={{ minWidth: 0 }}>
-                  <Typography variant="body1">Скрывать прошедшие пары</Typography>
+                  <Typography variant="body1">Скрывать прошедшие занятия</Typography>
                   <Typography variant="body2" color="text.secondary">
                     Будут отображаться только текущее и последующие занятия на сегодня
                   </Typography>
@@ -177,7 +177,7 @@ export function SettingsPage() {
                 <Switch
                   checked={hidePastLessons}
                   onChange={(event) => setHidePastLessons(event.target.checked)}
-                  slotProps={{ input: { 'aria-label': 'Скрывать прошедшие пары' } }}
+                  slotProps={{ input: { 'aria-label': 'Скрывать прошедшие занятия' } }}
                 />
               </Stack>
             </List>

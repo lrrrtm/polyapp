@@ -6,6 +6,7 @@ import { useUserPreferences } from '../app/user-preferences-context'
 import { GroupDrawer } from '../features/profile/GroupDrawer'
 import { getBuildingMapLinks } from '../shared/api/buildings'
 import { queryKeys } from '../shared/api/queryKeys'
+import { getScheduleChanges } from '../shared/api/scheduleChanges'
 import { useRequiredUser } from '../shared/api/useRequiredUser'
 import { addDays, isSunday, toIsoDate } from '../shared/date'
 import { AppScreen } from '../shared/ui/AppScreen'
@@ -16,7 +17,12 @@ import { LessonDetailsDrawer } from './schedule/LessonDetailsDrawer'
 import { ScheduleFavoritesDrawer } from './schedule/ScheduleFavoritesDrawer'
 import { ScheduleHeader } from './schedule/ScheduleHeader'
 import { ScheduleList } from './schedule/ScheduleList'
-import { getLessonMapUrl, isBreakActive, isLessonPast, type Lesson } from './schedule/schedule-utils'
+import {
+  buildScheduleLessonItems,
+  createDemoScheduleChanges,
+  type ScheduleLessonItem,
+} from './schedule/schedule-change-utils'
+import { getLessonMapUrl, isBreakActive, isLessonPast } from './schedule/schedule-utils'
 import { useActiveSchedule } from './schedule/useActiveSchedule'
 import { useScheduleSearch } from './schedule/useScheduleSearch'
 
@@ -32,7 +38,7 @@ export function SchedulePage() {
   const [dateAnchor, setDateAnchor] = useState<HTMLButtonElement | null>(null)
   const [scheduleDrawerOpen, setScheduleDrawerOpen] = useState(false)
   const [primaryGroupDrawerOpen, setPrimaryGroupDrawerOpen] = useState(false)
-  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
+  const [selectedLessonItem, setSelectedLessonItem] = useState<ScheduleLessonItem | null>(null)
   const [lessonDrawerOpen, setLessonDrawerOpen] = useState(false)
   const [lastKnownActiveScheduleTitle, setLastKnownActiveScheduleTitle] = useState('Расписание')
   const [now, setNow] = useState(() => new Date())
@@ -73,6 +79,11 @@ export function SchedulePage() {
     queryKey: queryKeys.buildingMapLinks(),
     queryFn: getBuildingMapLinks,
   })
+  const scheduleChangesQuery = useQuery({
+    queryKey: queryKeys.scheduleChanges(),
+    queryFn: getScheduleChanges,
+    enabled: user.status === 'ready',
+  })
   const buildingMapLinksById = useMemo(
     () => new Map((buildingMapLinksQuery.data ?? []).map((link) => [link.building_id, link])),
     [buildingMapLinksQuery.data],
@@ -106,6 +117,28 @@ export function SchedulePage() {
     activeScheduleQuery.data !== undefined &&
     'meta' in activeScheduleQuery.data &&
     activeScheduleQuery.data.meta?.is_stale === true
+  const scheduleChangeEvents = useMemo(() => {
+    const events = scheduleChangesQuery.data ?? []
+    if (import.meta.env.DEV && new URLSearchParams(window.location.search).has('scheduleChangesDemo')) {
+      return [
+        ...events,
+        ...createDemoScheduleChanges(activeScheduleQuery.data, activeScheduleItem, selectedDate),
+      ]
+    }
+
+    return events
+  }, [activeScheduleItem, activeScheduleQuery.data, scheduleChangesQuery.data, selectedDate])
+  const scheduleLessonItems = useMemo(
+    () =>
+      buildScheduleLessonItems(
+        visibleLessons,
+        selectedDate,
+        scheduleChangeEvents.filter(
+          (event) => event.item_type === activeScheduleItem?.item_type && event.ruz_id === activeScheduleItem.ruz_id,
+        ),
+      ),
+    [activeScheduleItem, scheduleChangeEvents, selectedDate, visibleLessons],
+  )
 
   useEffect(() => {
     const intervalId = window.setInterval(() => setNow(new Date()), 1000)
@@ -191,7 +224,7 @@ export function SchedulePage() {
         onMoveSelectedDate={moveSelectedDate}
       />
       <ScheduleList
-        visibleLessons={visibleLessons}
+        items={scheduleLessonItems}
         showBreaks={showBreaks}
         now={now}
         loading={activeScheduleQuery.isPending}
@@ -200,8 +233,8 @@ export function SchedulePage() {
         stale={scheduleStale}
         emptyStateTitle={emptyStateTitle}
         emptyStateLottieSrc={emptyStateLottieSrc}
-        onLessonClick={(lesson) => {
-          setSelectedLesson(lesson)
+        onLessonClick={(item) => {
+          setSelectedLessonItem(item)
           setLessonDrawerOpen(true)
         }}
         onPointerDown={handlePointerDown}
@@ -236,10 +269,10 @@ export function SchedulePage() {
       />
       <LessonDetailsDrawer
         open={lessonDrawerOpen}
-        lesson={selectedLesson}
-        mapUrl={selectedLesson ? getLessonMapUrl(selectedLesson, buildingMapLinksById) : undefined}
+        item={selectedLessonItem}
+        mapUrl={selectedLessonItem?.lesson ? getLessonMapUrl(selectedLessonItem.lesson, buildingMapLinksById) : undefined}
         onClose={() => setLessonDrawerOpen(false)}
-        onExited={() => setSelectedLesson(null)}
+        onExited={() => setSelectedLessonItem(null)}
       />
     </AppScreen>
   )

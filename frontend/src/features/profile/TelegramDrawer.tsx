@@ -90,7 +90,7 @@ export function TelegramDrawer({ open, status, loading, error, onClose }: Telegr
           </Stack>
           <List sx={{ flex: 1, minHeight: 0, overflowY: 'auto', px: 3, pb: 2 }}>
             <NotificationSwitchRow
-              title="Новые пары"
+              title="Новые занятия"
               description="Когда в расписании появляется новое занятие"
               checked={settings.lesson_added_enabled}
               disabled={settingsMutation.isPending}

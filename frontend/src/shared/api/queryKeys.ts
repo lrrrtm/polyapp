@@ -9,6 +9,7 @@ export const queryKeys = {
   scheduleEmpty: () => ['schedule', 'empty'] as const,
   schedule: (itemType: ScheduleItem['item_type'], ruzId: number | undefined, weekStart: string) =>
     ['schedule', itemType, ruzId, weekStart] as const,
+  scheduleChanges: () => ['schedule-changes'] as const,
   buildingMapLinks: () => ['building-map-links'] as const,
   groupsSearch: (query: string) => ['groups-search', query] as const,
   teachersSearch: (query: string) => ['teachers-search', query] as const,

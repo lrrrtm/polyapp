@@ -1,30 +1,33 @@
 import Alert from '@mui/material/Alert'
+import AccessTimeIcon from '@mui/icons-material/AccessTime'
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutlineOutlined'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
+import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
+import Chip from '@mui/material/Chip'
 import Container from '@mui/material/Container'
 import Divider from '@mui/material/Divider'
 import EventBusyIcon from '@mui/icons-material/EventBusy'
+import EventRepeatIcon from '@mui/icons-material/EventRepeat'
 import LinearProgress from '@mui/material/LinearProgress'
 import PersonIcon from '@mui/icons-material/Person'
 import PlaceIcon from '@mui/icons-material/Place'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { alpha, keyframes } from '@mui/material/styles'
-import type { PointerEvent } from 'react'
-import { formatLessonTime } from '../../shared/date'
+import { type PointerEvent, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { DelayedSkeleton } from '../../shared/ui/DelayedSkeleton'
 import { EmptyState } from '../../shared/ui/EmptyState'
 import { centeredFixedSurfaceSx } from '../../shared/ui/layout'
 import { useDelayedVisible } from '../../shared/ui/useDelayedVisible'
+import type { ScheduleChangeKind, ScheduleLessonItem } from './schedule-change-utils'
 import {
-  formatAuditorium,
   formatBreakCountdown,
   formatBreakDuration,
   getBreakDurationMinutes,
   getBreakRemainingSeconds,
   isBreakActive,
   isLessonActive,
-  type Lesson,
 } from './schedule-utils'
 
 const activeLessonPulse = keyframes`
@@ -37,7 +40,7 @@ const activeLessonPulse = keyframes`
 `
 
 type ScheduleListProps = {
-  visibleLessons: Lesson[]
+  items: ScheduleLessonItem[]
   showBreaks: boolean
   now: Date
   loading: boolean
@@ -46,13 +49,13 @@ type ScheduleListProps = {
   stale: boolean
   emptyStateTitle: string
   emptyStateLottieSrc?: string
-  onLessonClick: (lesson: Lesson) => void
+  onLessonClick: (item: ScheduleLessonItem) => void
   onPointerDown: (event: PointerEvent<HTMLElement>) => void
   onPointerUp: (event: PointerEvent<HTMLElement>) => void
 }
 
 export function ScheduleList({
-  visibleLessons,
+  items,
   showBreaks,
   now,
   loading,
@@ -65,7 +68,7 @@ export function ScheduleList({
   onPointerDown,
   onPointerUp,
 }: ScheduleListProps) {
-  const hasSelectedDayLessons = visibleLessons.length > 0
+  const hasSelectedDayLessons = items.length > 0
 
   return (
     <Container
@@ -95,25 +98,21 @@ export function ScheduleList({
             Сервис расписания временно недоступен. Показаны последние сохранённые данные.
           </Alert>
         ) : null}
-        {success && visibleLessons.length === 0 ? (
+        {success && items.length === 0 ? (
           <EmptyState icon={EventBusyIcon} lottieSrc={emptyStateLottieSrc} title={emptyStateTitle} sx={{ flex: 1, minHeight: 0 }} />
         ) : null}
-        {visibleLessons.map((lesson, index) => {
-          const nextLesson = visibleLessons[index + 1]
-          const breakMinutes = nextLesson ? getBreakDurationMinutes(lesson, nextLesson) : 0
-          const breakRemainingSeconds = nextLesson ? getBreakRemainingSeconds(lesson, nextLesson, now) : 0
-          const auditories = lesson.auditories.map(formatAuditorium).join(', ')
-          const teachers = lesson.teachers?.map((teacher) => teacher.full_name).join(', ')
-          const lessonType = lesson.typeObj?.name || lesson.typeObj?.abbr || 'Занятие'
-          const timeStart = formatLessonTime(lesson.time_start)
-          const timeEnd = formatLessonTime(lesson.time_end)
-          const activeLesson = isLessonActive(lesson.time_start, lesson.time_end, now)
-          const activeBreak = nextLesson ? isBreakActive(lesson, nextLesson, now) : false
+        {items.map((item, index) => {
+          const nextItem = items[index + 1]
+          const nextLesson = nextItem?.lesson
+          const breakMinutes = item.lesson && nextLesson ? getBreakDurationMinutes(item.lesson, nextLesson) : 0
+          const breakRemainingSeconds = item.lesson && nextLesson ? getBreakRemainingSeconds(item.lesson, nextLesson, now) : 0
+          const activeLesson = item.lesson ? isLessonActive(item.lesson.time_start, item.lesson.time_end, now) : false
+          const activeBreak = item.lesson && nextLesson ? isBreakActive(item.lesson, nextLesson, now) : false
 
           return (
-            <Box key={`${lesson.subject}-${lesson.time_start}-${index}`}>
+            <Box key={item.id}>
               <ButtonBase
-                onClick={() => onLessonClick(lesson)}
+                onClick={() => onLessonClick(item)}
                 sx={{
                   display: 'block',
                   width: 1,
@@ -128,9 +127,12 @@ export function ScheduleList({
               >
                 <Stack spacing={1.5} sx={{ py: 2 }}>
                   <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="body2" color="text.secondary">
-                      {lessonType}
-                    </Typography>
+                    <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flex: 1, minWidth: 0 }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>
+                        {item.summary.lessonType}
+                      </Typography>
+                      <ScheduleChangeChips kinds={item.changes.map((change) => change.kind)} />
+                    </Stack>
                     <Typography
                       variant="body2"
                       color="text.secondary"
@@ -157,30 +159,30 @@ export function ScheduleList({
                           : undefined
                       }
                     >
-                      {timeStart}
-                      {timeEnd ? ` - ${timeEnd}` : ''}
+                      {item.summary.timeStart}
+                      {item.summary.timeEnd ? ` - ${item.summary.timeEnd}` : ''}
                     </Typography>
                   </Stack>
                   <Stack spacing={1}>
                     <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 600 }}>
-                      {lesson.subject}
+                      {item.summary.subject}
                     </Typography>
-                    {teachers ? (
+                    {item.summary.teachers ? (
                       <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                         <PersonIcon color="action" fontSize="small" />
-                        <Typography variant="body2">{teachers}</Typography>
+                        <Typography variant="body2">{item.summary.teachers}</Typography>
                       </Stack>
                     ) : null}
                     <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                       <PlaceIcon color="action" fontSize="small" />
                       <Typography variant="body2" color="text.secondary">
-                        {auditories || 'Аудитория не указана'}
+                        {item.summary.auditories || 'Аудитория не указана'}
                       </Typography>
                     </Stack>
                   </Stack>
                 </Stack>
               </ButtonBase>
-              {index < visibleLessons.length - 1 ? (
+              {index < items.length - 1 ? (
                 showBreaks && breakMinutes > 0 ? (
                   <BreakRow minutes={breakMinutes} active={activeBreak} remainingSeconds={breakRemainingSeconds} />
                 ) : (
@@ -194,6 +196,117 @@ export function ScheduleList({
     </Container>
   )
 }
+
+export function ScheduleChangeChips({ kinds }: { kinds: ScheduleChangeKind[] }) {
+  const uniqueKinds = useMemo(() => [...new Set(kinds)], [kinds])
+  const [visibleCount, setVisibleCount] = useState(uniqueKinds.length)
+  const rootRef = useRef<HTMLSpanElement | null>(null)
+  const chipRefs = useRef<Array<HTMLDivElement | null>>([])
+  const overflowRefs = useRef<Array<HTMLDivElement | null>>([])
+
+  useLayoutEffect(() => {
+    const root = rootRef.current
+    if (!root) {
+      return
+    }
+    const rootElement = root
+
+    function updateVisibleCount() {
+      const width = rootElement.getBoundingClientRect().width
+      const chipWidths = uniqueKinds.map((_, index) => chipRefs.current[index]?.getBoundingClientRect().width ?? 0)
+      const gap = 6
+
+      for (let count = uniqueKinds.length; count >= 0; count -= 1) {
+        const hiddenCount = uniqueKinds.length - count
+        const overflowWidth = hiddenCount > 0 ? (overflowRefs.current[hiddenCount]?.getBoundingClientRect().width ?? 0) : 0
+        const visibleWidth = chipWidths.slice(0, count).reduce((sum, itemWidth) => sum + itemWidth, 0)
+        const gaps = Math.max(0, count - 1) + (hiddenCount > 0 && count > 0 ? 1 : 0)
+
+        if (visibleWidth + overflowWidth + gaps * gap <= width) {
+          setVisibleCount(count)
+          return
+        }
+      }
+    }
+
+    updateVisibleCount()
+    const observer = new ResizeObserver(updateVisibleCount)
+    observer.observe(rootElement)
+
+    return () => observer.disconnect()
+  }, [uniqueKinds])
+
+  if (uniqueKinds.length === 0) {
+    return null
+  }
+
+  const hiddenCount = uniqueKinds.length - visibleCount
+
+  return (
+    <Box component="span" ref={rootRef} sx={{ position: 'relative', display: 'inline-flex', gap: 0.75, flex: 1, minWidth: 0, overflow: 'hidden' }}>
+      {uniqueKinds.slice(0, visibleCount).map((kind) => {
+        const chip = scheduleChangeChipByKind[kind]
+        const Icon = chip.icon
+
+        return (
+          <Chip
+            key={kind}
+            icon={<Icon />}
+            label={chip.label}
+            color={chip.color}
+            size="small"
+            sx={{ height: 24 }}
+          />
+        )
+      })}
+      {hiddenCount > 0 ? <Chip label={`+${hiddenCount}`} size="small" sx={{ height: 24 }} /> : null}
+      <Box
+        component="span"
+        aria-hidden
+        sx={{ position: 'absolute', display: 'inline-flex', gap: 0.75, visibility: 'hidden', pointerEvents: 'none' }}
+      >
+        {uniqueKinds.map((kind, index) => {
+          const chip = scheduleChangeChipByKind[kind]
+          const Icon = chip.icon
+
+          return (
+            <Chip
+              key={kind}
+              ref={(element) => {
+                chipRefs.current[index] = element
+              }}
+              icon={<Icon />}
+              label={chip.label}
+              color={chip.color}
+              size="small"
+              sx={{ height: 24 }}
+            />
+          )
+        })}
+        {uniqueKinds.map((_, index) => (
+          <Chip
+            key={index + 1}
+            ref={(element) => {
+              overflowRefs.current[index + 1] = element
+            }}
+            label={`+${index + 1}`}
+            size="small"
+            sx={{ height: 24 }}
+          />
+        ))}
+      </Box>
+    </Box>
+  )
+}
+
+const scheduleChangeChipByKind = {
+  added: { label: 'Добавлена', color: 'success', icon: AddCircleOutlineIcon },
+  removed: { label: 'Отменена', color: 'error', icon: CancelOutlinedIcon },
+  time: { label: 'Время', color: 'warning', icon: AccessTimeIcon },
+  date: { label: 'Дата', color: 'warning', icon: EventRepeatIcon },
+  auditorium: { label: 'Аудитория', color: 'info', icon: PlaceIcon },
+  teacher: { label: 'Преподаватель', color: 'info', icon: PersonIcon },
+} satisfies Record<ScheduleChangeKind, { label: string; color: 'success' | 'error' | 'warning' | 'info'; icon: typeof AddCircleOutlineIcon }>
 
 function ScheduleLoading({ show }: { show: boolean }) {
   const visible = useDelayedVisible(show)
