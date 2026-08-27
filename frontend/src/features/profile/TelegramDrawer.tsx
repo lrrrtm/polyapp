@@ -2,7 +2,6 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
-import List from '@mui/material/List'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
@@ -17,7 +16,7 @@ import {
 } from '../../shared/api/notifications'
 import { queryKeys } from '../../shared/api/queryKeys'
 import { ActionButton } from '../../shared/ui/ActionButton'
-import { BottomDrawer } from '../../shared/ui/BottomDrawer'
+import { BottomDrawer, BottomDrawerActions, BottomDrawerContent, BottomDrawerList } from '../../shared/ui/BottomDrawer'
 import { ConfirmDrawer } from '../../shared/ui/ConfirmDrawer'
 
 type TelegramDrawerProps = {
@@ -80,15 +79,15 @@ export function TelegramDrawer({ open, status, loading, error, onClose }: Telegr
     return (
       <BottomDrawer open={open} onClose={onClose} title="Уведомления" height="78vh">
         <Stack sx={{ height: 1, minHeight: 0 }}>
-          <Stack spacing={1.5} sx={{ px: 3, pt: 0, pb: 1.5 }}>
+          <BottomDrawerContent spacing={1.5} sx={{ pb: 2 }}>
             <Typography variant="body2" color="text.secondary">
               Будут приходить {formatTelegramAccount(connectedAccount)}
             </Typography>
             {error ? <Alert severity="error">Не удалось загрузить настройки уведомлений.</Alert> : null}
             {settingsMutation.isError ? <Alert severity="error">Не удалось сохранить настройки уведомлений.</Alert> : null}
             {disconnectMutation.isError ? <Alert severity="error">Не удалось отключить Telegram.</Alert> : null}
-          </Stack>
-          <List sx={{ flex: 1, minHeight: 0, overflowY: 'auto', px: 3, pb: 2 }}>
+          </BottomDrawerContent>
+          <BottomDrawerList sx={{ flex: 1, minHeight: 0, px: 3 }}>
             <NotificationSwitchRow
               title="Новые занятия"
               description="Когда в расписании появляется новое занятие"
@@ -128,8 +127,8 @@ export function TelegramDrawer({ open, status, loading, error, onClose }: Telegr
               disabled={settingsMutation.isPending}
               onChange={(checked) => updateSetting('teacher_changed_enabled', checked)}
             />
-          </List>
-          <Stack sx={{ px: 3, pb: 4, pt: 1 }}>
+          </BottomDrawerList>
+          <BottomDrawerActions>
             <Button
               variant="outlined"
               color="error"
@@ -140,7 +139,7 @@ export function TelegramDrawer({ open, status, loading, error, onClose }: Telegr
             >
               Отвязать аккаунт
             </Button>
-          </Stack>
+          </BottomDrawerActions>
           <ConfirmDrawer
             open={disconnectConfirmOpen}
             onClose={() => setDisconnectConfirmOpen(false)}
@@ -158,7 +157,7 @@ export function TelegramDrawer({ open, status, loading, error, onClose }: Telegr
 
   return (
     <BottomDrawer open={open} onClose={onClose} title="Уведомления">
-      <Stack spacing={2.5} sx={{ px: 3, pt: 1, pb: 4 }}>
+      <BottomDrawerContent spacing={2.5}>
         <Typography variant="body1">
           Подключи Telegram, чтобы получать выбранные уведомления об изменениях расписания.
         </Typography>
@@ -171,7 +170,7 @@ export function TelegramDrawer({ open, status, loading, error, onClose }: Telegr
         </ActionButton>
         {error ? <Alert severity="error">Не удалось загрузить настройки уведомлений.</Alert> : null}
         {linkMutation.isError ? <Alert severity="error">{linkMutation.error.message}</Alert> : null}
-      </Stack>
+      </BottomDrawerContent>
     </BottomDrawer>
   )
 

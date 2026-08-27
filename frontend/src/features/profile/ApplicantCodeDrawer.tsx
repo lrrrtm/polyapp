@@ -1,4 +1,3 @@
-import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
@@ -6,7 +5,7 @@ import { setApplicantCode } from '../../shared/api/admissions'
 import { queryKeys } from '../../shared/api/queryKeys'
 import { setUserProfileApplicantCode, type UserProfile } from '../../shared/api/users'
 import { ActionButton } from '../../shared/ui/ActionButton'
-import { BottomDrawer } from '../../shared/ui/BottomDrawer'
+import { BottomDrawer, BottomDrawerContent } from '../../shared/ui/BottomDrawer'
 
 type ApplicantCodeDrawerProps = {
   open: boolean
@@ -41,7 +40,7 @@ export function ApplicantCodeDrawer({ open, currentCode, onClose }: ApplicantCod
 
   return (
     <BottomDrawer open={open} onClose={onClose} title="Уникальный код поступающего">
-      <Stack spacing={2.5} sx={{ px: 3, pt: 1, pb: 4 }}>
+      <BottomDrawerContent spacing={2.5}>
         <TextField
           value={code}
           inputMode="numeric"
@@ -61,7 +60,7 @@ export function ApplicantCodeDrawer({ open, currentCode, onClose }: ApplicantCod
         >
           Сохранить
         </ActionButton>
-      </Stack>
+      </BottomDrawerContent>
     </BottomDrawer>
   )
 }

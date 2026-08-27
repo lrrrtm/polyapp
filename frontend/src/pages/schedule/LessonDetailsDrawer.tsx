@@ -4,7 +4,7 @@ import PersonIcon from '@mui/icons-material/Person'
 import PlaceIcon from '@mui/icons-material/Place'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import { BottomDrawer } from '../../shared/ui/BottomDrawer'
+import { BottomDrawer, BottomDrawerContent } from '../../shared/ui/BottomDrawer'
 import type { LessonChangeDetail, ScheduleLessonItem } from './schedule-change-utils'
 
 type LessonDetailsDrawerProps = {
@@ -25,7 +25,7 @@ export function LessonDetailsDrawer({ open, item, mapUrl, onClose, onExited }: L
 
   return (
     <BottomDrawer open={open} onClose={onClose} onExited={onExited} maxHeight="80vh">
-      <Stack spacing={2.5} sx={{ px: 3, pt: 2, pb: 4 }}>
+      <BottomDrawerContent spacing={2.5}>
         <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="body2" color="text.secondary">
             {item?.summary.lessonType}
@@ -77,7 +77,7 @@ export function LessonDetailsDrawer({ open, item, mapUrl, onClose, onExited }: L
             Маршрут до корпуса
           </Button>
         </Stack>
-      </Stack>
+      </BottomDrawerContent>
     </BottomDrawer>
   )
 }

@@ -12,8 +12,102 @@
     <link rel="icon" type="image/png" href="/icons/favicon-16x16.png" sizes="16x16" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <title>Политехник</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --boot-bg: #ffffff;
+        --boot-paper: #f7f7f7;
+        --boot-divider: rgba(0, 0, 0, 0.12);
+        --boot-primary: #56965b;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --boot-bg: #121212;
+          --boot-paper: #1e1e1e;
+          --boot-divider: rgba(255, 255, 255, 0.12);
+        }
+      }
+
+      body {
+        margin: 0;
+        background: var(--boot-bg);
+      }
+
+      #boot-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: grid;
+        place-items: center;
+        background: var(--boot-bg);
+        transition: opacity 180ms ease;
+      }
+
+      #boot-splash.boot-splash--hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .boot-splash__content {
+        display: grid;
+        gap: 24px;
+        place-items: center;
+      }
+
+      .boot-splash__icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.16);
+      }
+
+      .boot-splash__bar {
+        width: 144px;
+        height: 4px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: var(--boot-paper);
+      }
+
+      .boot-splash__bar::before {
+        content: "";
+        display: block;
+        width: 56px;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--boot-primary);
+        animation: boot-progress 1.15s ease-in-out infinite;
+      }
+
+      @keyframes boot-progress {
+        0% {
+          transform: translateX(-56px);
+        }
+
+        50% {
+          transform: translateX(72px);
+        }
+
+        100% {
+          transform: translateX(144px);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .boot-splash__bar::before {
+          animation: none;
+        }
+      }
+    </style>
   </head>
   <body>
+    <div id="boot-splash" role="status" aria-label="Загрузка приложения">
+      <div class="boot-splash__content">
+        <img class="boot-splash__icon" src="/icons/icon-192.png" alt="" />
+        <div class="boot-splash__bar" aria-hidden="true"></div>
+      </div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

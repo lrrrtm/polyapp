@@ -21,6 +21,7 @@ import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import { alpha, type Theme } from '@mui/material/styles'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type ChangeEvent, type ElementType, type FormEvent, type ReactNode, forwardRef, useEffect, useState } from 'react'
 import { IMaskInput } from 'react-imask'
@@ -30,7 +31,7 @@ import { useRequiredUser } from '../shared/api/useRequiredUser'
 import { queryKeys } from '../shared/api/queryKeys'
 import { ActionButton } from '../shared/ui/ActionButton'
 import { AppScreen } from '../shared/ui/AppScreen'
-import { BottomDrawer } from '../shared/ui/BottomDrawer'
+import { BottomDrawer, BottomDrawerActions, BottomDrawerContent } from '../shared/ui/BottomDrawer'
 import { CenteredAlert } from '../shared/ui/CenteredAlert'
 import { ConfirmDrawer } from '../shared/ui/ConfirmDrawer'
 import { CopyToClipboardButton } from '../shared/ui/CopyToClipboardButton'
@@ -52,6 +53,12 @@ const feedbackSubjects: Array<{ value: FeedbackSubject; label: string }> = [
   { value: 'bug', label: 'Сообщение об ошибке' },
   { value: 'feature', label: 'Запрос новой функциональности' },
 ]
+const serviceCardActionSx = {
+  textAlign: 'left',
+  '&.Mui-focusVisible': {
+    boxShadow: (theme: Theme) => `inset 0 0 0 2px ${alpha(theme.palette.primary.main, 0.72)}`,
+  },
+}
 
 export function ServicesPage() {
   const queryClient = useQueryClient()
@@ -203,7 +210,7 @@ function FeedbackCard({ onOpen }: { onOpen: () => void }) {
         borderColor: 'transparent',
       }}
     >
-      <CardActionArea onClick={onOpen} sx={{ textAlign: 'left' }}>
+      <CardActionArea onClick={onOpen} sx={serviceCardActionSx}>
         <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
           <Stack direction="row" spacing={2} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
             <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', minWidth: 0 }}>
@@ -278,7 +285,7 @@ function FeedbackDrawer({ open, onClose }: { open: boolean; onClose: () => void 
     feedbackMutation.reset()
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: FormEvent) {
     event.preventDefault()
     if (!canSubmit) {
       return
@@ -324,7 +331,7 @@ function FeedbackDrawer({ open, onClose }: { open: boolean; onClose: () => void 
       title="Обратная связь"
       maxHeight="calc(100dvh - 24px)"
     >
-      <Stack component="form" spacing={2.5} sx={{ px: 3, pt: 2, pb: 4 }} onSubmit={handleSubmit}>
+      <BottomDrawerContent component="form" spacing={2.5} onSubmit={handleSubmit}>
         {submitted ? (
           <EmptyState
             lottieSrc={feedbackSuccessLottieSrc}
@@ -414,7 +421,7 @@ function FeedbackDrawer({ open, onClose }: { open: boolean; onClose: () => void 
               value={contact}
               onChange={(event) => setContact(event.target.value)}
               disabled={feedbackMutation.isPending}
-              slotProps={{ htmlInput: { maxLength: 200 } }}
+              slotProps={{ htmlInput: { maxLength: 200 }, inputLabel: { shrink: true } }}
               fullWidth
             />
             {feedbackMutation.isError ? <Alert severity="error">{feedbackMutation.error.message}</Alert> : null}
@@ -423,7 +430,7 @@ function FeedbackDrawer({ open, onClose }: { open: boolean; onClose: () => void 
             </ActionButton>
           </>
         )}
-      </Stack>
+      </BottomDrawerContent>
     </BottomDrawer>
   )
 }
@@ -562,7 +569,7 @@ function CardContentRoot({
   children: ReactNode
 }) {
   return interactive ? (
-    <CardActionArea onClick={onClick} sx={{ textAlign: 'left' }}>
+    <CardActionArea onClick={onClick} sx={serviceCardActionSx}>
       {children}
     </CardActionArea>
   ) : (
@@ -595,7 +602,7 @@ function ContractDrawer({
   const contractFilled = contractInput.replace(/\D/g, '').length === 9
   const showContractError = contractFilled && !contractComplete
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: FormEvent) {
     event.preventDefault()
     if (contractComplete) {
       onSubmit(`${dormitoryContractPrefix}${contractInput}`)
@@ -604,7 +611,7 @@ function ContractDrawer({
 
   return (
     <BottomDrawer open={open} onClose={onClose} onExited={onExited} title="Добавление договора">
-      <Stack component="form" spacing={2.5} sx={{ px: 3, pt: 1, pb: 4 }} onSubmit={handleSubmit}>
+      <BottomDrawerContent component="form" spacing={2.5} onSubmit={handleSubmit}>
         <TextField
           label="Номер договора"
           value={contractInput}
@@ -614,6 +621,7 @@ function ContractDrawer({
           error={showContractError}
           helperText={showContractError ? 'Введи 7 цифр и 2 цифры после /' : undefined}
           slotProps={{
+            inputLabel: { shrink: true },
             input: {
               startAdornment: <InputAdornment position="start">{dormitoryContractPrefix}</InputAdornment>,
               inputComponent: DormitoryContractMaskInput as ElementType<InputBaseComponentProps>,
@@ -630,7 +638,7 @@ function ContractDrawer({
         <Typography variant="body2" color="text.secondary">
           Номер договора сохранится только на этом устройстве.
         </Typography>
-      </Stack>
+      </BottomDrawerContent>
     </BottomDrawer>
   )
 }
@@ -694,12 +702,12 @@ function PaymentDetailsDrawer({
   return (
     <BottomDrawer open={open} onClose={onClose} title="Оплата общежития">
       <Stack>
-        <Box sx={{ maxHeight: '56vh', overflowY: 'auto', px: 3, pt: 1, pb: 2 }}>
+        <BottomDrawerContent sx={{ maxHeight: '56vh', overflowY: 'auto', pb: 2 }}>
           {loading ? <DormitoryPaymentSkeleton /> : null}
           {error ? <Alert severity="error">{error}</Alert> : null}
           {!loading && !error && lookup ? <DormitoryPaymentStatus lookup={lookup} amountDue={amountDue} /> : null}
-        </Box>
-        <Stack spacing={1.5} sx={{ px: 3, pb: 4, pt: 1 }}>
+        </BottomDrawerContent>
+        <BottomDrawerActions spacing={1.5}>
           <Button
             variant="contained"
             size="large"
@@ -715,7 +723,7 @@ function PaymentDetailsDrawer({
           <Button variant="outlined" color="error" size="large" onClick={onForget} fullWidth>
             Удалить номер договора
           </Button>
-        </Stack>
+        </BottomDrawerActions>
       </Stack>
     </BottomDrawer>
   )

@@ -5,7 +5,6 @@ import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
 import Chip from '@mui/material/Chip'
-import Container from '@mui/material/Container'
 import Divider from '@mui/material/Divider'
 import EventBusyIcon from '@mui/icons-material/EventBusy'
 import EventRepeatIcon from '@mui/icons-material/EventRepeat'
@@ -15,10 +14,9 @@ import PlaceIcon from '@mui/icons-material/Place'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { alpha, keyframes } from '@mui/material/styles'
-import { type PointerEvent, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { DelayedSkeleton } from '../../shared/ui/DelayedSkeleton'
 import { EmptyState } from '../../shared/ui/EmptyState'
-import { centeredFixedSurfaceSx } from '../../shared/ui/layout'
 import { useDelayedVisible } from '../../shared/ui/useDelayedVisible'
 import type { ScheduleChangeKind, ScheduleLessonItem } from './schedule-change-utils'
 import {
@@ -50,8 +48,7 @@ type ScheduleListProps = {
   emptyStateTitle: string
   emptyStateLottieSrc?: string
   onLessonClick: (item: ScheduleLessonItem) => void
-  onPointerDown: (event: PointerEvent<HTMLElement>) => void
-  onPointerUp: (event: PointerEvent<HTMLElement>) => void
+  onRefresh: () => void
 }
 
 export function ScheduleList({
@@ -65,136 +62,134 @@ export function ScheduleList({
   emptyStateTitle,
   emptyStateLottieSrc,
   onLessonClick,
-  onPointerDown,
-  onPointerUp,
+  onRefresh,
 }: ScheduleListProps) {
-  const hasSelectedDayLessons = items.length > 0
+  const showSchedule = success && !error
+  const hasSelectedDayLessons = showSchedule && items.length > 0
 
   return (
-    <Container
-      component="main"
-      maxWidth={false}
+    <Stack
       sx={{
-        ...centeredFixedSurfaceSx,
-        position: 'absolute',
-        top: 56,
-        bottom: 112,
-        left: 0,
-        right: 0,
-        height: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
+        flex: 1,
+        minHeight: 0,
         overflowY: hasSelectedDayLessons ? 'auto' : 'hidden',
         py: 0,
+        touchAction: 'pan-y',
       }}
-      onPointerDown={onPointerDown}
-      onPointerUp={onPointerUp}
     >
-      <Stack sx={{ flex: 1, touchAction: 'pan-y' }}>
-        {loading ? <ScheduleLoading show /> : null}
-        {error ? <Alert severity="error">Не удалось загрузить расписание.</Alert> : null}
-        {success && stale ? (
-          <Alert severity="warning" sx={{ mt: 2 }}>
-            Сервис расписания временно недоступен. Показаны последние сохранённые данные.
-          </Alert>
-        ) : null}
-        {success && items.length === 0 ? (
-          <EmptyState icon={EventBusyIcon} lottieSrc={emptyStateLottieSrc} title={emptyStateTitle} sx={{ flex: 1, minHeight: 0 }} />
-        ) : null}
-        {items.map((item, index) => {
-          const nextItem = items[index + 1]
-          const nextLesson = nextItem?.lesson
-          const breakMinutes = item.lesson && nextLesson ? getBreakDurationMinutes(item.lesson, nextLesson) : 0
-          const breakRemainingSeconds = item.lesson && nextLesson ? getBreakRemainingSeconds(item.lesson, nextLesson, now) : 0
-          const activeLesson = item.lesson ? isLessonActive(item.lesson.time_start, item.lesson.time_end, now) : false
-          const activeBreak = item.lesson && nextLesson ? isBreakActive(item.lesson, nextLesson, now) : false
+      {loading ? <ScheduleLoading show /> : null}
+      {error ? (
+        <EmptyState
+          lottieSrc="/animations/schedule-error.json"
+          title="Что-то сломалось"
+          description="Не удалось загрузить расписание"
+          actionLabel="Обновить"
+          onAction={onRefresh}
+          sx={{ flex: 1, minHeight: 0 }}
+        />
+      ) : null}
+      {showSchedule && stale ? (
+        <Alert severity="warning" sx={{ mt: 2 }}>
+          Сервис расписания временно недоступен. Показаны последние сохранённые данные.
+        </Alert>
+      ) : null}
+      {showSchedule && items.length === 0 ? (
+        <EmptyState icon={EventBusyIcon} lottieSrc={emptyStateLottieSrc} title={emptyStateTitle} sx={{ flex: 1, minHeight: 0 }} />
+      ) : null}
+      {showSchedule ? items.map((item, index) => {
+        const nextItem = items[index + 1]
+        const nextLesson = nextItem?.lesson
+        const breakMinutes = item.lesson && nextLesson ? getBreakDurationMinutes(item.lesson, nextLesson) : 0
+        const breakRemainingSeconds = item.lesson && nextLesson ? getBreakRemainingSeconds(item.lesson, nextLesson, now) : 0
+        const activeLesson = item.lesson ? isLessonActive(item.lesson.time_start, item.lesson.time_end, now) : false
+        const activeBreak = item.lesson && nextLesson ? isBreakActive(item.lesson, nextLesson, now) : false
 
-          return (
-            <Box key={item.id}>
-              <ButtonBase
-                data-tour={index === 0 ? 'schedule-lesson-card' : undefined}
-                onClick={() => onLessonClick(item)}
-                sx={{
-                  display: 'block',
-                  width: 1,
-                  borderRadius: 2,
-                  textAlign: 'left',
-                  '&:focus-visible': {
-                    outline: 2,
-                    outlineColor: 'primary.main',
-                    outlineOffset: 2,
-                  },
-                }}
-              >
-                <Stack spacing={1.5} sx={{ py: 2 }}>
-                  <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flex: 1, minWidth: 0 }}>
-                      <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>
-                        {item.summary.lessonType}
-                      </Typography>
-                      <ScheduleChangeChips kinds={item.changes.map((change) => change.kind)} />
-                    </Stack>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={
-                        activeLesson
-                          ? (theme) => ({
-                              px: 1,
-                              py: 0.25,
-                              borderRadius: 1,
-                              '--active-lesson-bg':
-                                theme.palette.mode === 'dark'
-                                  ? alpha(theme.palette.primary.light, 0.34)
-                                  : alpha(theme.palette.primary.main, 0.12),
-                              '--active-lesson-bg-pulse':
-                                theme.palette.mode === 'dark'
-                                  ? alpha(theme.palette.primary.light, 0.5)
-                                  : alpha(theme.palette.primary.main, 0.24),
-                              animation: `${activeLessonPulse} 1.8s ease-in-out infinite`,
-                              color:
-                                theme.palette.mode === 'dark'
-                                  ? theme.palette.primary.contrastText
-                                  : theme.palette.primary.dark,
-                            })
-                          : undefined
-                      }
-                    >
-                      {item.summary.timeStart}
-                      {item.summary.timeEnd ? ` - ${item.summary.timeEnd}` : ''}
+        return (
+          <Box key={item.id}>
+            <ButtonBase
+              data-tour={index === 0 ? 'schedule-lesson-card' : undefined}
+              onClick={() => onLessonClick(item)}
+              sx={{
+                display: 'block',
+                width: 1,
+                borderRadius: 2,
+                px: 2,
+                textAlign: 'left',
+                '&:focus-visible': {
+                  outline: 2,
+                  outlineColor: 'primary.main',
+                  outlineOffset: 2,
+                },
+              }}
+            >
+              <Stack spacing={1.5} sx={{ py: 2 }}>
+                <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flex: 1, minWidth: 0 }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>
+                      {item.summary.lessonType}
                     </Typography>
+                    <ScheduleChangeChips kinds={item.changes.map((change) => change.kind)} />
                   </Stack>
-                  <Stack spacing={1}>
-                    <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 600 }}>
-                      {item.summary.subject}
-                    </Typography>
-                    {item.summary.teachers ? (
-                      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                        <PersonIcon color="action" fontSize="small" />
-                        <Typography variant="body2">{item.summary.teachers}</Typography>
-                      </Stack>
-                    ) : null}
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={
+                      activeLesson
+                        ? (theme) => ({
+                            px: 1,
+                            py: 0.25,
+                            borderRadius: 1,
+                            '--active-lesson-bg':
+                              theme.palette.mode === 'dark'
+                                ? alpha(theme.palette.primary.light, 0.34)
+                                : alpha(theme.palette.primary.main, 0.12),
+                            '--active-lesson-bg-pulse':
+                              theme.palette.mode === 'dark'
+                                ? alpha(theme.palette.primary.light, 0.5)
+                                : alpha(theme.palette.primary.main, 0.24),
+                            animation: `${activeLessonPulse} 1.8s ease-in-out infinite`,
+                            color:
+                              theme.palette.mode === 'dark'
+                                ? theme.palette.primary.contrastText
+                                : theme.palette.primary.dark,
+                          })
+                        : undefined
+                    }
+                  >
+                    {item.summary.timeStart}
+                    {item.summary.timeEnd ? ` - ${item.summary.timeEnd}` : ''}
+                  </Typography>
+                </Stack>
+                <Stack spacing={1}>
+                  <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 600 }}>
+                    {item.summary.subject}
+                  </Typography>
+                  {item.summary.teachers ? (
                     <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                      <PlaceIcon color="action" fontSize="small" />
-                      <Typography variant="body2" color="text.secondary">
-                        {item.summary.auditories || 'Аудитория не указана'}
-                      </Typography>
+                      <PersonIcon color="action" fontSize="small" />
+                      <Typography variant="body2">{item.summary.teachers}</Typography>
                     </Stack>
+                  ) : null}
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                    <PlaceIcon color="action" fontSize="small" />
+                    <Typography variant="body2" color="text.secondary">
+                      {item.summary.auditories || 'Аудитория не указана'}
+                    </Typography>
                   </Stack>
                 </Stack>
-              </ButtonBase>
-              {index < items.length - 1 ? (
-                showBreaks && breakMinutes > 0 ? (
-                  <BreakRow minutes={breakMinutes} active={activeBreak} remainingSeconds={breakRemainingSeconds} />
-                ) : (
-                  <Divider />
-                )
-              ) : null}
-            </Box>
-          )
-        })}
-      </Stack>
-    </Container>
+              </Stack>
+            </ButtonBase>
+            {index < items.length - 1 ? (
+              showBreaks && breakMinutes > 0 ? (
+                <BreakRow minutes={breakMinutes} active={activeBreak} remainingSeconds={breakRemainingSeconds} />
+              ) : (
+                <Divider />
+              )
+            ) : null}
+          </Box>
+        )
+      }) : null}
+    </Stack>
   )
 }
 

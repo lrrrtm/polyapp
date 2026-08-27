@@ -24,7 +24,7 @@ import { type Group, getGroupSchedule } from '../shared/api/ruz'
 import { useRequiredUser } from '../shared/api/useRequiredUser'
 import { getWeekStartDate, toIsoDate } from '../shared/date'
 import { AppScreen } from '../shared/ui/AppScreen'
-import { BottomDrawer } from '../shared/ui/BottomDrawer'
+import { BottomDrawer, BottomDrawerList } from '../shared/ui/BottomDrawer'
 import { CenteredAlert } from '../shared/ui/CenteredAlert'
 import { DelayedSkeleton } from '../shared/ui/DelayedSkeleton'
 import { PageSkeleton } from '../shared/ui/PageSkeleton'
@@ -189,7 +189,7 @@ export function SettingsPage() {
         onClose={() => setThemeDrawerOpen(false)}
         title="Тема оформления"
       >
-        <List sx={{ pb: 2 }}>
+        <BottomDrawerList>
           {themePreferenceOptions.map((option) => (
             <ListItemButton
               key={option.value}
@@ -207,7 +207,7 @@ export function SettingsPage() {
               ) : null}
             </ListItemButton>
           ))}
-        </List>
+        </BottomDrawerList>
       </BottomDrawer>
       {appConfig.VITE_ADMISSIONS_ENABLED ? (
         <ApplicantCodeDrawer
@@ -266,7 +266,7 @@ function SettingsRow({
     <ListItemButton
       onClick={onClick}
       sx={{
-        px: 0,
+        px: 2,
         py: 1.75,
       }}
     >

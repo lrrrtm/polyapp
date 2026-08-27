@@ -1,9 +1,12 @@
 import Box from '@mui/material/Box'
+import List from '@mui/material/List'
+import type { ListProps } from '@mui/material/List'
 import Stack from '@mui/material/Stack'
+import type { StackProps } from '@mui/material/Stack'
 import SwipeableDrawer from '@mui/material/SwipeableDrawer'
 import Typography from '@mui/material/Typography'
 import type { SxProps, Theme } from '@mui/material/styles'
-import type { ReactNode } from 'react'
+import type { ElementType, ReactNode } from 'react'
 import { appMaxWidth } from './layout'
 import { useBackOverlay } from './useBackOverlay'
 
@@ -98,5 +101,73 @@ export function BottomDrawer({
         </Box>
       </Stack>
     </SwipeableDrawer>
+  )
+}
+
+export function BottomDrawerContent<RootComponent extends ElementType = 'div'>({ sx, ...props }: StackProps<RootComponent>) {
+  return (
+    <Stack
+      {...props}
+      sx={[
+        {
+          px: 3,
+          pt: 1,
+          pb: 4,
+        },
+        ...(Array.isArray(sx) ? sx : [sx]),
+      ]}
+    />
+  )
+}
+
+export function BottomDrawerSearch<RootComponent extends ElementType = 'div'>({ sx, ...props }: StackProps<RootComponent>) {
+  return (
+    <Stack
+      {...props}
+      sx={[
+        {
+          px: 3,
+          pb: 2,
+        },
+        ...(Array.isArray(sx) ? sx : [sx]),
+      ]}
+    />
+  )
+}
+
+export function BottomDrawerList({ sx, ...props }: ListProps) {
+  return (
+    <List
+      {...props}
+      sx={[
+        {
+          overflowY: 'auto',
+          pb: 2,
+          '& .MuiListItemButton-root': {
+            px: 3,
+          },
+          '& .MuiListItemIcon-root': {
+            minWidth: 40,
+          },
+        },
+        ...(Array.isArray(sx) ? sx : [sx]),
+      ]}
+    />
+  )
+}
+
+export function BottomDrawerActions<RootComponent extends ElementType = 'div'>({ sx, ...props }: StackProps<RootComponent>) {
+  return (
+    <Stack
+      {...props}
+      sx={[
+        {
+          px: 3,
+          pt: 1,
+          pb: 4,
+        },
+        ...(Array.isArray(sx) ? sx : [sx]),
+      ]}
+    />
   )
 }

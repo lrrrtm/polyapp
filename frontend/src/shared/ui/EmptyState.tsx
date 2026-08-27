@@ -6,7 +6,8 @@ import type { SxProps, Theme } from '@mui/material/styles'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { waitForBootTask } from '../../app/boot'
 import { isEmptyStateLottieReady, loadLottieSvg, markEmptyStateLottieReady } from './empty-state-lotties'
 
 const LottieSvg = lazy(loadLottieSvg)
@@ -64,10 +65,26 @@ export function EmptyState({ icon: Icon, lottieSrc, title, description, actionLa
 }
 
 function EmptyStateLottie({ lottieSrc, reduceMotion }: { lottieSrc: string | object; reduceMotion: boolean }) {
-  const [ready, setReady] = useState(() => isEmptyStateLottieReady(lottieSrc))
+  const [ready, setReady] = useState(() => isEmptyStateLottieReady(lottieSrc) && !document.getElementById('boot-splash'))
+  const completeBootTaskRef = useRef<() => void>(() => undefined)
+
+  useEffect(() => {
+    if (ready) {
+      return
+    }
+
+    completeBootTaskRef.current = waitForBootTask()
+
+    return () => {
+      completeBootTaskRef.current()
+      completeBootTaskRef.current = () => undefined
+    }
+  }, [ready])
 
   function handleReady() {
     markEmptyStateLottieReady(lottieSrc)
+    completeBootTaskRef.current()
+    completeBootTaskRef.current = () => undefined
     setReady(true)
   }
 

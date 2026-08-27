@@ -1,6 +1,6 @@
 import SchoolIcon from '@mui/icons-material/School'
 import { useQuery } from '@tanstack/react-query'
-import { type PointerEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate } from 'react-router'
 import { useUserPreferences } from '../app/user-preferences-context'
 import { GroupDrawer } from '../features/profile/GroupDrawer'
@@ -19,6 +19,7 @@ import { ScheduleFavoritesDrawer } from './schedule/ScheduleFavoritesDrawer'
 import { ScheduleHeader } from './schedule/ScheduleHeader'
 import { ScheduleHeaderTour } from './schedule/ScheduleHeaderTour'
 import { ScheduleList } from './schedule/ScheduleList'
+import { SwipeableScheduleViewport, type SwipeableScheduleViewportHandle } from './schedule/SwipeableScheduleViewport'
 import {
   buildScheduleLessonItems,
   createDemoScheduleChanges,
@@ -45,7 +46,7 @@ export function SchedulePage() {
   const [scheduleTourActive, setScheduleTourActive] = useState(false)
   const [lastKnownActiveScheduleTitle, setLastKnownActiveScheduleTitle] = useState('Расписание')
   const [now, setNow] = useState(() => new Date())
-  const swipeStartX = useRef<number | null>(null)
+  const scheduleViewportRef = useRef<SwipeableScheduleViewportHandle | null>(null)
 
   const profile = user.status === 'ready' ? user.profile : null
   const {
@@ -91,31 +92,6 @@ export function SchedulePage() {
     () => new Map((buildingMapLinksQuery.data ?? []).map((link) => [link.building_id, link])),
     [buildingMapLinksQuery.data],
   )
-  const selectedDay = useMemo(
-    () => activeScheduleQuery.data?.days.find((day) => day.date === selectedDate),
-    [activeScheduleQuery.data?.days, selectedDate],
-  )
-  const visibleLessons = useMemo(() => {
-    if (!selectedDay) {
-      return []
-    }
-
-    if (!hidePastLessons || selectedDate !== toIsoDate(now)) {
-      return selectedDay.lessons
-    }
-
-    return selectedDay.lessons.filter(
-      (lesson, index, lessons) =>
-        !isLessonPast(lesson.time_end, now) || (showBreaks && index < lessons.length - 1 && isBreakActive(lesson, lessons[index + 1], now)),
-    )
-  }, [hidePastLessons, now, selectedDate, selectedDay, showBreaks])
-  const allTodayLessonsHidden =
-    hidePastLessons &&
-    selectedDate === toIsoDate(now) &&
-    Boolean(selectedDay?.lessons.length) &&
-    visibleLessons.length === 0
-  const emptyStateTitle = allTodayLessonsHidden ? 'Сегодня занятий больше нет' : 'На этот день занятий нет'
-  const emptyStateLottieSrc = allTodayLessonsHidden ? '/animations/lessons-finished.json' : '/animations/no-lessons.json'
   const scheduleStale =
     activeScheduleQuery.data !== undefined &&
     'meta' in activeScheduleQuery.data &&
@@ -131,18 +107,56 @@ export function SchedulePage() {
 
     return events
   }, [activeScheduleItem, activeScheduleQuery.data, scheduleChangesQuery.data, selectedDate])
-  const scheduleLessonItems = useMemo(
-    () =>
-      buildScheduleLessonItems(
-        visibleLessons,
-        selectedDate,
-        scheduleChangeEvents.filter(
-          (event) => event.item_type === activeScheduleItem?.item_type && event.ruz_id === activeScheduleItem.ruz_id,
-        ),
-      ),
-    [activeScheduleItem, scheduleChangeEvents, selectedDate, visibleLessons],
-  )
-  const displayedScheduleLessonItems = scheduleTourActive ? [scheduleTourLessonMock] : scheduleLessonItems
+  const scheduleDayViews = useMemo(() => {
+    const today = toIsoDate(now)
+    const dates = [
+      getScheduleDate(addDays(selectedDate, -1), -1),
+      selectedDate,
+      getScheduleDate(addDays(selectedDate, 1), 1),
+    ]
+    const itemChangeEvents = scheduleChangeEvents.filter(
+      (event) => event.item_type === activeScheduleItem?.item_type && event.ruz_id === activeScheduleItem.ruz_id,
+    )
+
+    return dates.map((date) => {
+      const day = activeScheduleQuery.data?.days.find((scheduleDay) => scheduleDay.date === date)
+      const lessons =
+        day && hidePastLessons && date === today
+          ? day.lessons.filter(
+              (lesson, index, dayLessons) =>
+                !isLessonPast(lesson.time_end, now) ||
+                (showBreaks && index < dayLessons.length - 1 && isBreakActive(lesson, dayLessons[index + 1], now)),
+            )
+          : (day?.lessons ?? [])
+      const allTodayLessonsHidden = hidePastLessons && date === today && Boolean(day?.lessons.length) && lessons.length === 0
+
+      return {
+        date,
+        items: buildScheduleLessonItems(lessons, date, itemChangeEvents),
+        loading: scheduleTourActive ? false : activeScheduleQuery.isPending,
+        error: scheduleTourActive ? false : activeScheduleQuery.isError,
+        success: scheduleTourActive ? true : activeScheduleQuery.isSuccess,
+        stale: scheduleTourActive ? false : scheduleStale,
+        emptyStateTitle: allTodayLessonsHidden ? 'Сегодня занятий больше нет' : 'На этот день занятий нет',
+        emptyStateLottieSrc: allTodayLessonsHidden ? '/animations/lessons-finished.json' : '/animations/no-lessons.json',
+      }
+    })
+  }, [
+    activeScheduleItem,
+    activeScheduleQuery.data?.days,
+    activeScheduleQuery.isError,
+    activeScheduleQuery.isPending,
+    activeScheduleQuery.isSuccess,
+    hidePastLessons,
+    now,
+    scheduleChangeEvents,
+    scheduleStale,
+    scheduleTourActive,
+    selectedDate,
+    showBreaks,
+  ])
+  const [previousDayView, selectedDayView, nextDayView] = scheduleDayViews
+  const displayedSelectedDayView = scheduleTourActive ? { ...selectedDayView, items: [scheduleTourLessonMock] } : selectedDayView
 
   useEffect(() => {
     const intervalId = window.setInterval(() => setNow(new Date()), 1000)
@@ -160,32 +174,13 @@ export function SchedulePage() {
     setSelectedDate((currentDate) => getScheduleDate(addDays(currentDate, days), days))
   }
 
-  function handlePointerDown(event: PointerEvent<HTMLElement>) {
-    if (event.pointerType !== 'touch') {
-      swipeStartX.current = null
+  function animateSelectedDate(days: number) {
+    const direction = days < 0 ? -1 : 1
+    if (scheduleViewportRef.current?.animateToDate(direction)) {
       return
     }
 
-    swipeStartX.current = event.clientX
-  }
-
-  function handlePointerUp(event: PointerEvent<HTMLElement>) {
-    if (event.pointerType !== 'touch') {
-      swipeStartX.current = null
-      return
-    }
-
-    if (swipeStartX.current === null) {
-      return
-    }
-
-    const deltaX = event.clientX - swipeStartX.current
-    swipeStartX.current = null
-    if (Math.abs(deltaX) < 60) {
-      return
-    }
-
-    moveSelectedDate(deltaX < 0 ? 1 : -1)
+    moveSelectedDate(days)
   }
 
   if (user.status === 'loading') {
@@ -239,7 +234,7 @@ export function SchedulePage() {
           vibrateTap()
           setSelectedDate(getScheduleDate(date))
         }}
-        onMoveSelectedDate={moveSelectedDate}
+        onMoveSelectedDate={animateSelectedDate}
       />
       <ScheduleHeaderTour
         lessonDetailsOpen={lessonDrawerOpen}
@@ -248,23 +243,13 @@ export function SchedulePage() {
         onLessonDetailsClose={() => setLessonDrawerOpen(false)}
         onScheduleDrawerClose={() => setScheduleDrawerOpen(false)}
       />
-      <ScheduleList
-        items={displayedScheduleLessonItems}
-        showBreaks={showBreaks}
-        now={now}
-        loading={scheduleTourActive ? false : activeScheduleQuery.isPending}
-        error={scheduleTourActive ? false : activeScheduleQuery.isError}
-        success={scheduleTourActive ? true : activeScheduleQuery.isSuccess}
-        stale={scheduleTourActive ? false : scheduleStale}
-        emptyStateTitle={emptyStateTitle}
-        emptyStateLottieSrc={emptyStateLottieSrc}
-        onLessonClick={(item) => {
-          vibrateTap()
-          setSelectedLessonItem(item)
-          setLessonDrawerOpen(true)
-        }}
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
+      <SwipeableScheduleViewport
+        ref={scheduleViewportRef}
+        disabled={scheduleTourActive}
+        previous={renderScheduleDay(previousDayView, showBreaks, now, handleLessonClick, () => void activeScheduleQuery.refetch())}
+        current={renderScheduleDay(displayedSelectedDayView, showBreaks, now, handleLessonClick, () => void activeScheduleQuery.refetch())}
+        next={renderScheduleDay(nextDayView, showBreaks, now, handleLessonClick, () => void activeScheduleQuery.refetch())}
+        onDateCommit={moveSelectedDate}
       />
       <ScheduleFavoritesDrawer
         open={scheduleDrawerOpen}
@@ -306,6 +291,12 @@ export function SchedulePage() {
       />
     </AppScreen>
   )
+
+  function handleLessonClick(item: ScheduleLessonItem) {
+    vibrateTap()
+    setSelectedLessonItem(item)
+    setLessonDrawerOpen(true)
+  }
 }
 
 const scheduleTourLessonMock: ScheduleLessonItem = {
@@ -324,4 +315,39 @@ const scheduleTourLessonMock: ScheduleLessonItem = {
 
 function getScheduleDate(date: string, direction = 1): string {
   return isSunday(date) ? addDays(date, direction > 0 ? 1 : -1) : date
+}
+
+type ScheduleDayView = {
+  date: string
+  items: ScheduleLessonItem[]
+  loading: boolean
+  error: boolean
+  success: boolean
+  stale: boolean
+  emptyStateTitle: string
+  emptyStateLottieSrc: string
+}
+
+function renderScheduleDay(
+  dayView: ScheduleDayView,
+  showBreaks: boolean,
+  now: Date,
+  onLessonClick: (item: ScheduleLessonItem) => void,
+  onRefresh: () => void,
+) {
+  return (
+    <ScheduleList
+      items={dayView.items}
+      showBreaks={showBreaks}
+      now={now}
+      loading={dayView.loading}
+      error={dayView.error}
+      success={dayView.success}
+      stale={dayView.stale}
+      emptyStateTitle={dayView.emptyStateTitle}
+      emptyStateLottieSrc={dayView.emptyStateLottieSrc}
+      onLessonClick={onLessonClick}
+      onRefresh={onRefresh}
+    />
+  )
 }

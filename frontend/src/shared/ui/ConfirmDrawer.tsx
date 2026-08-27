@@ -5,7 +5,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { ReactNode } from 'react'
 import { ActionButton } from './ActionButton'
-import { BottomDrawer } from './BottomDrawer'
+import { BottomDrawer, BottomDrawerContent } from './BottomDrawer'
 
 type ConfirmDrawerProps = {
   open: boolean
@@ -38,7 +38,7 @@ export function ConfirmDrawer({
 }: ConfirmDrawerProps) {
   return (
     <BottomDrawer open={open} onClose={onClose} onExited={onExited} title={title}>
-      <Stack spacing={2.5} sx={{ px: 3, pt: 1, pb: 4 }}>
+      <BottomDrawerContent spacing={2.5}>
         <Typography variant="body1">{message}</Typography>
         <Stack direction="row" spacing={1.25}>
           <Button variant="outlined" size="large" disabled={confirmLoading} onClick={onClose} fullWidth>
@@ -49,7 +49,7 @@ export function ConfirmDrawer({
           </ActionButton>
         </Stack>
         {error ? <Alert severity="error">{error}</Alert> : null}
-      </Stack>
+      </BottomDrawerContent>
     </BottomDrawer>
   )
 }

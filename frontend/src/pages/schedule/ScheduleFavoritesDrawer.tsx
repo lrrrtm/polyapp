@@ -6,7 +6,6 @@ import Button from '@mui/material/Button'
 import CloseIcon from '@mui/icons-material/Close'
 import IconButton from '@mui/material/IconButton'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
-import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
@@ -20,7 +19,7 @@ import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
 import { useState } from 'react'
 import type { ScheduleItem } from '../../shared/api/users'
-import { BottomDrawer } from '../../shared/ui/BottomDrawer'
+import { BottomDrawer, BottomDrawerList, BottomDrawerSearch } from '../../shared/ui/BottomDrawer'
 import { ConfirmDrawer } from '../../shared/ui/ConfirmDrawer'
 import { DelayedSkeleton } from '../../shared/ui/DelayedSkeleton'
 import { EmptyState } from '../../shared/ui/EmptyState'
@@ -126,16 +125,16 @@ export function ScheduleFavoritesDrawer({
       </AppBar>
       <BottomDrawer open={open} onClose={onClose} title="Избранное" height="70vh">
         <Stack sx={{ height: 1 }}>
-          <Box sx={{ px: 3, pb: 1 }}>
+          <BottomDrawerSearch>
             <TextField
               fullWidth
-              label="Поиск"
               value={scheduleSearch}
               onChange={(event) => onSearchChange(event.target.value)}
               placeholder="Группа или преподаватель"
+              slotProps={{ htmlInput: { 'aria-label': 'Поиск группы или преподавателя' } }}
             />
-          </Box>
-          <List data-tour={tourMock ? 'schedule-favorites-content' : undefined} sx={{ overflowY: 'auto', pb: 2 }}>
+          </BottomDrawerSearch>
+          <BottomDrawerList data-tour={tourMock ? 'schedule-favorites-content' : undefined}>
             {tourMock ? <TourFavoritesList /> : filteredScheduleItems.map((item) => {
               const index = scheduleItems.findIndex(
                 (scheduleItem) => scheduleItem.item_type === item.item_type && scheduleItem.ruz_id === item.ruz_id,
@@ -202,7 +201,7 @@ export function ScheduleFavoritesDrawer({
             })}
             {!tourMock && isExternalSearchPending ? <SearchResultsLoading show /> : null}
             {searchError ? (
-              <Box sx={{ px: 2, py: 1 }}>
+              <Box sx={{ px: 3, py: 1 }}>
                 <Alert severity="error">Не удалось выполнить поиск.</Alert>
               </Box>
             ) : null}
@@ -240,7 +239,7 @@ export function ScheduleFavoritesDrawer({
                 ))
               : null}
             {!tourMock && shouldSearchRuz && addFavoriteError ? (
-              <Box sx={{ px: 2, py: 1 }}>
+              <Box sx={{ px: 3, py: 1 }}>
                 <Alert severity="error">Не удалось добавить в избранное.</Alert>
               </Box>
             ) : null}
@@ -253,7 +252,7 @@ export function ScheduleFavoritesDrawer({
                 sx={{ minHeight: 280 }}
               />
             ) : null}
-          </List>
+          </BottomDrawerList>
         </Stack>
       </BottomDrawer>
       <ConfirmDrawer

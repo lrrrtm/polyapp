@@ -14,7 +14,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { type Group, searchGroups } from '../../shared/api/ruz'
 import { queryKeys } from '../../shared/api/queryKeys'
 import { setPrimaryGroup } from '../../shared/api/users'
-import { BottomDrawer } from '../../shared/ui/BottomDrawer'
+import { BottomDrawer, BottomDrawerContent, BottomDrawerList, BottomDrawerSearch } from '../../shared/ui/BottomDrawer'
 import { ConfirmDrawer } from '../../shared/ui/ConfirmDrawer'
 import { EmptyState } from '../../shared/ui/EmptyState'
 import { ListItemSkeleton } from '../../shared/ui/ListItemSkeleton'
@@ -42,10 +42,10 @@ export function GroupDrawer({ open, currentGroup, primaryGroupId, loading, error
   return (
     <>
       <BottomDrawer open={open && !showSearch} onClose={onClose} title="Основная группа">
-        <Stack spacing={3} sx={{ px: 2, pb: 3 }}>
+        <BottomDrawerContent spacing={3}>
           <Stack spacing={1}>
             {loading ? (
-              <ListItemSkeleton show rows={1} />
+              <ListItemSkeleton show rows={1} disableGutters />
             ) : currentGroup ? (
               <List disablePadding>
                 <GroupListItem group={currentGroup} />
@@ -58,7 +58,7 @@ export function GroupDrawer({ open, currentGroup, primaryGroupId, loading, error
           <Button variant="contained" size="large" onClick={() => setSearchOpen(true)}>
             {currentGroup ? 'Изменить группу' : 'Выбрать группу'}
           </Button>
-        </Stack>
+        </BottomDrawerContent>
       </BottomDrawer>
       <GroupSearchDrawer
         open={open && showSearch}
@@ -129,19 +129,19 @@ function GroupSearchDrawer({ open, primaryGroupId, error, onBack, onClose, onSav
     <>
       <BottomDrawer open={open} onClose={onBack} title="Выбор группы" height="90dvh" maxHeight="90dvh">
         <Stack sx={{ height: 1 }}>
-          <Box sx={{ px: 3, pb: 1 }}>
+          <BottomDrawerSearch>
             <TextField
               fullWidth
               autoFocus
-              label="Поиск"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Номер группы"
               error={searchQuery.isError || error}
               helperText={searchQuery.isError ? 'Не удалось найти группы.' : undefined}
+              slotProps={{ htmlInput: { 'aria-label': 'Поиск группы' } }}
             />
-          </Box>
-          <List sx={{ overflowY: 'auto', pb: 2 }}>
+          </BottomDrawerSearch>
+          <BottomDrawerList>
             {showStartTyping ? (
               <EmptyState lottieSrc="/animations/start-typing-group.json" title="Начни вводить номер группы" sx={{ minHeight: 280 }} />
             ) : null}
@@ -169,11 +169,11 @@ function GroupSearchDrawer({ open, primaryGroupId, error, onBack, onClose, onSav
               />
             ) : null}
             {searchQuery.isError ? (
-              <Box sx={{ px: 2, py: 1 }}>
+              <Box sx={{ px: 3, py: 1 }}>
                 <Alert severity="error">Не удалось выполнить поиск.</Alert>
               </Box>
             ) : null}
-          </List>
+          </BottomDrawerList>
         </Stack>
       </BottomDrawer>
       <ConfirmDrawer
@@ -212,7 +212,7 @@ function GroupListItem({ group, selected = false, onClick }: { group: Group; sel
   )
 
   if (!onClick) {
-    return <ListItem>{content}</ListItem>
+    return <ListItem disableGutters>{content}</ListItem>
   }
 
   return (
