@@ -2,16 +2,37 @@ import type { z } from 'zod'
 import { appConfig } from '../../app/config'
 
 async function throwApiError(response: Response): Promise<never> {
-  const data: unknown = await response.json().catch(() => null)
+  const text = await response.text().catch(() => '')
+  const data: unknown = text ? parseJson(text) : null
   const message =
     data !== null &&
     typeof data === 'object' &&
     'message' in data &&
     typeof data.message === 'string'
       ? data.message
-      : `Request failed with status ${response.status}`
+      : fallbackApiErrorMessage(response.status)
 
   throw new Error(message)
+}
+
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return null
+  }
+}
+
+function fallbackApiErrorMessage(status: number) {
+  if (status === 413) {
+    return 'Файл слишком большой. Максимальный размер — 10 МБ.'
+  }
+
+  if (status === 415) {
+    return 'Можно приложить только картинку, PDF или видео.'
+  }
+
+  return `Request failed with status ${status}`
 }
 
 export async function apiGet<TSchema extends z.ZodType>(

@@ -12,6 +12,7 @@ import { useBackOverlay } from './useBackOverlay'
 type BottomDrawerProps = {
   open: boolean
   onClose: () => void
+  onAfterClose?: () => void
   onExited?: () => void
   title?: string
   fullScreen?: boolean
@@ -24,6 +25,7 @@ type BottomDrawerProps = {
 export function BottomDrawer({
   open,
   onClose,
+  onAfterClose,
   onExited,
   title,
   fullScreen = false,
@@ -33,6 +35,10 @@ export function BottomDrawer({
   contentSx,
 }: BottomDrawerProps) {
   const handleClose = useBackOverlay(open, onClose)
+  const handleExited = () => {
+    onAfterClose?.()
+    onExited?.()
+  }
 
   return (
     <SwipeableDrawer
@@ -48,7 +54,7 @@ export function BottomDrawer({
           }),
         },
         transition: {
-          onExited,
+          onExited: handleExited,
         },
         paper: {
           sx: (theme) => ({

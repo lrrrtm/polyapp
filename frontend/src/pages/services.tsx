@@ -230,11 +230,6 @@ function FeedbackDrawer({ open, onClose }: { open: boolean; onClose: () => void 
     feedbackMutation.reset()
   }
 
-  function handleClose() {
-    reset()
-    onClose()
-  }
-
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!canSubmit) {
@@ -276,7 +271,8 @@ function FeedbackDrawer({ open, onClose }: { open: boolean; onClose: () => void 
   return (
     <BottomDrawer
       open={open}
-      onClose={handleClose}
+      onClose={onClose}
+      onAfterClose={reset}
       title="Обратная связь"
       fullScreen
       contentSx={{ overflowY: 'auto' }}
@@ -288,7 +284,7 @@ function FeedbackDrawer({ open, onClose }: { open: boolean; onClose: () => void 
             title="Спасибо!"
             description="Мы получили твоё обращение"
             actionLabel="Закрыть"
-            onAction={handleClose}
+            onAction={onClose}
             sx={{ minHeight: 'calc(100dvh - 104px)' }}
           />
         ) : (
@@ -327,7 +323,7 @@ function FeedbackDrawer({ open, onClose }: { open: boolean; onClose: () => void 
                 disabled={feedbackMutation.isPending}
                 fullWidth
               >
-                {attachment ? 'Заменить файл' : 'Присоединить файл'}
+                {attachment ? 'Заменить файл' : 'Прикрепить файл'}
                 <Box
                   component="input"
                   type="file"
