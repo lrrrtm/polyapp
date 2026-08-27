@@ -9,7 +9,7 @@ ARG VITE_ADMISSIONS_ENABLED=true
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 ENV VITE_ADMISSIONS_ENABLED=${VITE_ADMISSIONS_ENABLED}
 
-COPY frontend/package.json frontend/pnpm-lock.yaml ./
+COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
 RUN corepack enable && pnpm install --frozen-lockfile
 
 COPY frontend ./
