@@ -1,10 +1,17 @@
+from uuid import UUID
+
 import httpx
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
 
 from app.api.deps import get_spbstu_pay_client
+from app.core.config import get_settings
 from app.main import app
+from app.notifications.models import NotificationOutbox
 from app.services.client import SpbstuPayClient, SpbstuPayError, SpbstuPayRateLimitError
+from app.services.models import FeedbackRequest
+from app.services.router import MAX_FEEDBACK_ATTACHMENT_BYTES
 from app.services.schemas import DormitoryPaymentLookupResponse
 
 
@@ -117,6 +124,118 @@ async def test_dormitory_lookup_returns_payload(override_db: None) -> None:
     assert response.status_code == 200
     assert response.json()["valid"] is True
     assert response.json()["amount_due"] == 871.23
+
+
+@pytest.mark.asyncio
+async def test_feedback_requires_user(override_db: None) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/v1/services/feedback",
+            data={"subject": "comment", "message": "Привет", "contact": "@student"},
+        )
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "USER_NOT_FOUND"
+
+
+@pytest.mark.asyncio
+async def test_feedback_saves_valid_submission_without_file(override_db: None, db_session) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        await client.post("/api/v1/me")
+        response = await client.post(
+            "/api/v1/services/feedback",
+            data={"subject": "question", "message": "  Как дела?  ", "contact": "  @student  "},
+        )
+
+    assert response.status_code == 201
+    feedback = await db_session.get(FeedbackRequest, UUID(response.json()["id"]))
+    assert feedback is not None
+    assert feedback.subject == "question"
+    assert feedback.message == "Как дела?"
+    assert feedback.contact == "@student"
+    assert feedback.attachment_data is None
+
+
+@pytest.mark.asyncio
+async def test_feedback_saves_attachment(override_db: None, db_session) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        await client.post("/api/v1/me")
+        response = await client.post(
+            "/api/v1/services/feedback",
+            data={"subject": "bug", "message": "Сломалось", "contact": "mail@example.com"},
+            files={"attachment": ("screen.png", b"hello", "image/png")},
+        )
+
+    assert response.status_code == 201
+    feedback = await db_session.get(FeedbackRequest, UUID(response.json()["id"]))
+    assert feedback is not None
+    assert feedback.attachment_filename == "screen.png"
+    assert feedback.attachment_content_type == "image/png"
+    assert feedback.attachment_size == 5
+    assert feedback.attachment_data == b"hello"
+
+
+@pytest.mark.asyncio
+async def test_feedback_rejects_large_attachment(override_db: None) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        await client.post("/api/v1/me")
+        response = await client.post(
+            "/api/v1/services/feedback",
+            data={"subject": "bug", "message": "Сломалось", "contact": "mail@example.com"},
+            files={"attachment": ("large.png", b"x" * (MAX_FEEDBACK_ATTACHMENT_BYTES + 1), "image/png")},
+        )
+
+    assert response.status_code == 413
+    assert response.json()["code"] == "FEEDBACK_ATTACHMENT_TOO_LARGE"
+
+
+@pytest.mark.asyncio
+async def test_feedback_rejects_unsupported_attachment_type(override_db: None) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        await client.post("/api/v1/me")
+        response = await client.post(
+            "/api/v1/services/feedback",
+            data={"subject": "bug", "message": "Сломалось", "contact": "mail@example.com"},
+            files={"attachment": ("notes.txt", b"hello", "text/plain")},
+        )
+
+    assert response.status_code == 415
+    assert response.json()["code"] == "FEEDBACK_ATTACHMENT_TYPE_NOT_ALLOWED"
+
+
+@pytest.mark.asyncio
+async def test_feedback_validates_required_fields(override_db: None) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        await client.post("/api/v1/me")
+        response = await client.post(
+            "/api/v1/services/feedback",
+            data={"subject": "comment", "message": "   ", "contact": "   "},
+        )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_feedback_enqueues_telegram_notification(override_db: None, db_session) -> None:
+    settings = get_settings()
+    old_chat_id = settings.feedback_telegram_chat_id
+    settings.feedback_telegram_chat_id = 2002
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            await client.post("/api/v1/me")
+            response = await client.post(
+                "/api/v1/services/feedback",
+                data={"subject": "feature", "message": "Добавьте виджет", "contact": "vk.com/student"},
+            )
+    finally:
+        settings.feedback_telegram_chat_id = old_chat_id
+
+    assert response.status_code == 201
+    notification = await db_session.scalar(select(NotificationOutbox).where(NotificationOutbox.event_type == "feedback_created"))
+    assert notification is not None
+    assert notification.telegram_chat_id == 2002
+    assert notification.payload["feedback_id"] == response.json()["id"]
+    assert "Добавьте виджет" in notification.text
 
 
 def make_pay_client(response: httpx.Response) -> SpbstuPayClient:

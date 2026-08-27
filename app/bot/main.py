@@ -2,17 +2,19 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from uuid import UUID
 
 from aiogram import Bot, Dispatcher, Router
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.exceptions import TelegramForbiddenError, TelegramRetryAfter, TelegramAPIError
 from aiogram.filters import Command, CommandObject
-from aiogram.types import Message
+from aiogram.types import BufferedInputFile, Message
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.db.session import SessionLocal
-from app.notifications.models import TelegramAccount
+from app.notifications.models import NotificationOutbox, TelegramAccount
 from app.notifications.service import (
     claim_due_notifications,
     deactivate_telegram_chat,
@@ -21,6 +23,7 @@ from app.notifications.service import (
     mark_notification_failed,
     mark_notification_sent,
 )
+from app.services.models import FeedbackRequest
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -90,7 +93,7 @@ async def run_sender_loop(bot: Bot) -> None:
                     if not db_notification or db_notification.telegram_chat_id is None:
                         continue
                     try:
-                        await bot.send_message(db_notification.telegram_chat_id, db_notification.text, parse_mode="HTML")
+                        await send_telegram_notification(bot, db, db_notification)
                     except TelegramRetryAfter as error:
                         await mark_notification_failed(db, db_notification, str(error), retry_after_seconds=error.retry_after)
                     except TelegramForbiddenError as error:
@@ -106,6 +109,39 @@ async def run_sender_loop(bot: Bot) -> None:
         except Exception:
             logger.exception("Telegram sender loop failed")
         await asyncio.sleep(settings.telegram_outbox_poll_interval_seconds)
+
+
+async def send_telegram_notification(bot: Bot, db: AsyncSession, notification: NotificationOutbox) -> None:
+    if notification.telegram_chat_id is None:
+        return
+
+    await bot.send_message(notification.telegram_chat_id, notification.text, parse_mode="HTML")
+    if notification.event_type == "feedback_created":
+        await send_feedback_attachment(bot, db, notification)
+
+
+async def send_feedback_attachment(bot: Bot, db: AsyncSession, notification: NotificationOutbox) -> None:
+    if notification.telegram_chat_id is None:
+        return
+
+    feedback_id = notification.payload.get("feedback_id")
+    if not isinstance(feedback_id, str):
+        return
+
+    try:
+        feedback_uuid = UUID(feedback_id)
+    except ValueError:
+        return
+
+    feedback = await db.get(FeedbackRequest, feedback_uuid)
+    if not feedback or not feedback.attachment_data:
+        return
+
+    filename = feedback.attachment_filename or "attachment"
+    await bot.send_document(
+        notification.telegram_chat_id,
+        BufferedInputFile(feedback.attachment_data, filename=filename),
+    )
 
 
 async def main() -> None:

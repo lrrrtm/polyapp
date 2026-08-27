@@ -17,9 +17,11 @@ from app.notifications.service import (
     mark_notification_sent,
     update_notification_settings,
 )
+from app.bot.main import send_telegram_notification
 from app.notifications.schemas import NotificationSettingsUpdate
 from app.schemas.ruz import Auditorium, Building, Group, GroupSchedule, Lesson, Teacher, Week
 from app.schedules.service import save_group_schedule_cache
+from app.services.models import FeedbackRequest
 from app.users.deps import hash_identity_token
 from app.users.models import User, UserScheduleItem
 
@@ -222,6 +224,47 @@ async def test_sender_state_transitions(override_db: None, db_session: AsyncSess
 
 
 @pytest.mark.asyncio
+async def test_feedback_notification_sends_attachment(override_db: None, db_session: AsyncSession) -> None:
+    user = User(identity_hash="feedback-sender-user")
+    db_session.add(user)
+    await db_session.flush()
+    feedback = FeedbackRequest(
+        user_id=user.id,
+        subject="bug",
+        message="Сломалось",
+        contact="@student",
+        attachment_filename="screen.png",
+        attachment_content_type="image/png",
+        attachment_size=5,
+        attachment_data=b"hello",
+        created_at=datetime.now(UTC),
+    )
+    db_session.add(feedback)
+    await db_session.flush()
+    notification = NotificationOutbox(
+        user_id=user.id,
+        channel="telegram",
+        telegram_chat_id=2002,
+        event_type="feedback_created",
+        payload={"feedback_id": str(feedback.id)},
+        text="feedback",
+        dedupe_key="telegram:test:feedback-file",
+        next_attempt_at=datetime.now(UTC),
+    )
+    db_session.add(notification)
+    await db_session.flush()
+    bot = FakeTelegramBot()
+
+    await send_telegram_notification(bot, db_session, notification)
+
+    assert bot.messages == [(2002, "feedback", "HTML")]
+    assert len(bot.documents) == 1
+    assert bot.documents[0][0] == 2002
+    assert bot.documents[0][1].filename == "screen.png"
+    assert bot.documents[0][1].data == b"hello"
+
+
+@pytest.mark.asyncio
 async def test_deactivate_telegram_chat_cancels_pending(override_db: None, db_session: AsyncSession) -> None:
     user = await create_user_with_telegram(db_session)
     db_session.add(
@@ -246,3 +289,15 @@ async def test_deactivate_telegram_chat_cancels_pending(override_db: None, db_se
     assert account.is_active is False
     assert notification is not None
     assert notification.status == "cancelled"
+
+
+class FakeTelegramBot:
+    def __init__(self) -> None:
+        self.messages = []
+        self.documents = []
+
+    async def send_message(self, chat_id: int, text: str, parse_mode: str | None = None) -> None:
+        self.messages.append((chat_id, text, parse_mode))
+
+    async def send_document(self, chat_id: int, document) -> None:
+        self.documents.append((chat_id, document))

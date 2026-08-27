@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -40,10 +40,16 @@ class Settings(BaseSettings):
     telegram_proxy_url: str | None = Field(default=None, validation_alias="TELEGRAM_PROXY_URL")
     telegram_outbox_poll_interval_seconds: int = Field(default=5, validation_alias="TELEGRAM_OUTBOX_POLL_INTERVAL_SECONDS")
     telegram_send_concurrency: int = Field(default=4, validation_alias="TELEGRAM_SEND_CONCURRENCY")
+    feedback_telegram_chat_id: int | None = Field(default=None, validation_alias="FEEDBACK_TELEGRAM_CHAT_ID")
     user_cookie_name: str = Field(default="polytech_user", validation_alias="USER_COOKIE_NAME")
     user_cookie_max_age: int = Field(default=60 * 60 * 24 * 365, validation_alias="USER_COOKIE_MAX_AGE")
     user_cookie_secure: bool = Field(default=False, validation_alias="USER_COOKIE_SECURE")
     user_cookie_samesite: str = Field(default="lax", validation_alias="USER_COOKIE_SAMESITE")
+
+    @field_validator("feedback_telegram_chat_id", mode="before")
+    @classmethod
+    def empty_feedback_chat_id_as_none(cls, value: object) -> object:
+        return None if value == "" else value
 
 
 @lru_cache

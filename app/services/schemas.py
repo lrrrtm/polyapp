@@ -1,3 +1,6 @@
+from datetime import datetime
+from uuid import UUID
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -31,3 +34,8 @@ class DormitoryPaymentLookupResponse(BaseModel):
     amount_due: float | None = None
     pays: list[DormitoryPaymentPay] = Field(default_factory=list)
     data_date: str | None = None
+
+
+class FeedbackSubmissionResponse(BaseModel):
+    id: UUID
+    created_at: datetime

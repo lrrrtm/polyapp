@@ -8,6 +8,7 @@ from app.core.config import get_settings
 from app.db.base import Base
 from app.admissions import models as admission_models  # noqa: F401
 from app.buildings import models as building_models  # noqa: F401
+from app.services import models as service_models  # noqa: F401
 from app.users import models  # noqa: F401
 
 config = context.config

@@ -37,6 +37,24 @@ export async function apiPost<TSchema extends z.ZodType>(
   return apiRequest('POST', path, body, schema)
 }
 
+export async function apiPostForm<TSchema extends z.ZodType>(
+  path: string,
+  body: FormData,
+  schema: TSchema,
+): Promise<z.infer<TSchema>> {
+  const response = await fetch(`${appConfig.VITE_API_BASE_URL}${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    body,
+  })
+
+  if (!response.ok) {
+    await throwApiError(response)
+  }
+
+  return schema.parse(await response.json())
+}
+
 export async function apiDelete(path: string): Promise<void> {
   const response = await fetch(`${appConfig.VITE_API_BASE_URL}${path}`, {
     method: 'DELETE',
