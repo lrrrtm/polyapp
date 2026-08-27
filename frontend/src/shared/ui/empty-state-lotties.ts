@@ -1,4 +1,5 @@
 export const emptyStateLottieSources = [
+  '/animations/contract-success.json',
   '/animations/group-not-selected.json',
   '/animations/feedback-success.json',
   '/animations/lessons-finished.json',

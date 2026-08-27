@@ -1,6 +1,4 @@
-import CloseIcon from '@mui/icons-material/Close'
 import Box from '@mui/material/Box'
-import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
 import SwipeableDrawer from '@mui/material/SwipeableDrawer'
 import Typography from '@mui/material/Typography'
@@ -15,7 +13,6 @@ type BottomDrawerProps = {
   onAfterClose?: () => void
   onExited?: () => void
   title?: string
-  fullScreen?: boolean
   height?: number | string
   maxHeight?: number | string
   children: ReactNode
@@ -28,9 +25,8 @@ export function BottomDrawer({
   onAfterClose,
   onExited,
   title,
-  fullScreen = false,
   height,
-  maxHeight = fullScreen ? '100dvh' : '90vh',
+  maxHeight = '90vh',
   children,
   contentSx,
 }: BottomDrawerProps) {
@@ -58,7 +54,7 @@ export function BottomDrawer({
         },
         paper: {
           sx: (theme) => ({
-            height: fullScreen ? '100dvh' : height,
+            height,
             maxHeight,
             width: '100%',
             maxWidth: appMaxWidth,
@@ -70,47 +66,36 @@ export function BottomDrawer({
         },
       }}
     >
-      <Stack sx={{ height: 1, minHeight: 0 }}>
-        {fullScreen ? (
-          <Stack
-            direction="row"
-            sx={{
-              alignItems: 'center',
-              borderBottom: 1,
-              borderColor: 'divider',
-              flexShrink: 0,
-              minHeight: 56,
-              px: 1,
-            }}
-          >
-            <Box sx={{ width: 40 }} />
-            <Typography variant="h6" component="h2" noWrap sx={{ flex: 1, textAlign: 'center' }}>
-              {title}
-            </Typography>
-            <IconButton aria-label="Закрыть" color="inherit" onClick={handleClose}>
-              <CloseIcon />
-            </IconButton>
-          </Stack>
-        ) : (
-          <Box
-            sx={{
-              alignSelf: 'center',
-              width: 36,
-              height: 4,
-              mt: 1.5,
-              borderRadius: 999,
-              bgcolor: 'divider',
-            }}
-          />
-        )}
-        {!fullScreen && title ? (
+      <Stack sx={{ height: height ? 1 : 'auto', maxHeight: 'inherit', minHeight: 0 }}>
+        <Box
+          sx={{
+            alignSelf: 'center',
+            width: 36,
+            height: 4,
+            mt: 1.5,
+            borderRadius: 999,
+            bgcolor: 'divider',
+          }}
+        />
+        {title ? (
           <Box sx={{ px: 3, pt: 2, pb: 1 }}>
             <Typography variant="h6" component="h2">
               {title}
             </Typography>
           </Box>
         ) : null}
-        <Box sx={{ flex: 1, minHeight: 0, ...contentSx }}>{children}</Box>
+        <Box
+          sx={[
+            {
+              flex: height ? 1 : '0 1 auto',
+              minHeight: 0,
+              overflowY: 'auto',
+            },
+            ...(Array.isArray(contentSx) ? contentSx : [contentSx]),
+          ]}
+        >
+          {children}
+        </Box>
       </Stack>
     </SwipeableDrawer>
   )

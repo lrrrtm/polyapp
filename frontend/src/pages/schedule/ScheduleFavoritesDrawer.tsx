@@ -107,12 +107,12 @@ export function ScheduleFavoritesDrawer({
             onClick={onOpen}
             sx={{
               display: 'flex',
-              gap: 1,
               justifyContent: 'center',
               maxWidth: 1,
               minWidth: 0,
-              px: 1.5,
+              px: 5,
               py: 0.75,
+              position: 'relative',
               textAlign: 'center',
               textTransform: 'none',
             }}
@@ -120,20 +120,19 @@ export function ScheduleFavoritesDrawer({
             <Typography variant="body1" noWrap sx={{ minWidth: 0 }}>
               {activeScheduleTitle}
             </Typography>
-            <KeyboardArrowUpIcon />
+            <KeyboardArrowUpIcon sx={{ position: 'absolute', right: 16 }} />
           </Button>
         </Toolbar>
       </AppBar>
       <BottomDrawer open={open} onClose={onClose} title="Избранное" height="70vh">
         <Stack sx={{ height: 1 }}>
-          <Box sx={{ px: 2, pb: 1 }}>
+          <Box sx={{ px: 3, pb: 1 }}>
             <TextField
               fullWidth
               label="Поиск"
               value={scheduleSearch}
               onChange={(event) => onSearchChange(event.target.value)}
               placeholder="Группа или преподаватель"
-              size="small"
             />
           </Box>
           <List data-tour={tourMock ? 'schedule-favorites-content' : undefined} sx={{ overflowY: 'auto', pb: 2 }}>

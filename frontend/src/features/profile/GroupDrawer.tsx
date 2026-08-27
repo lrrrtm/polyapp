@@ -129,7 +129,7 @@ function GroupSearchDrawer({ open, primaryGroupId, error, onBack, onClose, onSav
     <>
       <BottomDrawer open={open} onClose={onBack} title="Выбор группы" height="90dvh" maxHeight="90dvh">
         <Stack sx={{ height: 1 }}>
-          <Box sx={{ px: 2, pb: 1 }}>
+          <Box sx={{ px: 3, pb: 1 }}>
             <TextField
               fullWidth
               autoFocus
@@ -137,7 +137,6 @@ function GroupSearchDrawer({ open, primaryGroupId, error, onBack, onClose, onSav
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Номер группы"
-              size="small"
               error={searchQuery.isError || error}
               helperText={searchQuery.isError ? 'Не удалось найти группы.' : undefined}
             />
