@@ -1,6 +1,7 @@
 import SchoolIcon from '@mui/icons-material/School'
-import { useQuery } from '@tanstack/react-query'
+import { type UseQueryResult, useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { Navigate } from 'react-router'
 import { useUserPreferences } from '../app/user-preferences-context'
 import { GroupDrawer } from '../features/profile/GroupDrawer'
@@ -8,7 +9,7 @@ import { getBuildingMapLinks } from '../shared/api/buildings'
 import { queryKeys } from '../shared/api/queryKeys'
 import { getScheduleChanges } from '../shared/api/scheduleChanges'
 import { useRequiredUser } from '../shared/api/useRequiredUser'
-import { addDays, isSunday, toIsoDate } from '../shared/date'
+import { addDays, getWeekStartDate, isSunday, toIsoDate } from '../shared/date'
 import { vibrateTap } from '../shared/haptics'
 import { AppScreen } from '../shared/ui/AppScreen'
 import { CenteredAlert } from '../shared/ui/CenteredAlert'
@@ -25,7 +26,7 @@ import {
   createDemoScheduleChanges,
   type ScheduleLessonItem,
 } from './schedule/schedule-change-utils'
-import { getLessonMapUrl, isBreakActive, isLessonPast } from './schedule/schedule-utils'
+import { fetchSchedule, getLessonMapUrl, isBreakActive, isLessonPast, type Schedule } from './schedule/schedule-utils'
 import { useActiveSchedule } from './schedule/useActiveSchedule'
 import { useScheduleSearch } from './schedule/useScheduleSearch'
 
@@ -44,6 +45,7 @@ export function SchedulePage() {
   const [selectedLessonItem, setSelectedLessonItem] = useState<ScheduleLessonItem | null>(null)
   const [lessonDrawerOpen, setLessonDrawerOpen] = useState(false)
   const [scheduleTourActive, setScheduleTourActive] = useState(false)
+  const [calendarAnimation, setCalendarAnimation] = useState<{ date: string; direction: -1 | 1 } | null>(null)
   const [lastKnownActiveScheduleTitle, setLastKnownActiveScheduleTitle] = useState('Расписание')
   const [now, setNow] = useState(() => new Date())
   const scheduleViewportRef = useRef<SwipeableScheduleViewportHandle | null>(null)
@@ -54,6 +56,7 @@ export function SchedulePage() {
     activeScheduleItem,
     activeScheduleQuery,
     scheduleItemQueries,
+    selectedWeekStartDate,
     activeScheduleTitle,
   } = useActiveSchedule(
     profile,
@@ -88,14 +91,38 @@ export function SchedulePage() {
     queryFn: getScheduleChanges,
     enabled: user.status === 'ready',
   })
+  const previousDate = getScheduleDate(addDays(selectedDate, -1), -1)
+  const nextDate = getScheduleDate(addDays(selectedDate, 1), 1)
+  const previousWeekStartDate = getWeekStartDate(previousDate)
+  const nextWeekStartDate = getWeekStartDate(nextDate)
+  const shouldLoadPreviousWeek = activeScheduleItem !== null && activeScheduleItem !== undefined && previousWeekStartDate !== selectedWeekStartDate
+  const shouldLoadNextWeek = activeScheduleItem !== null && activeScheduleItem !== undefined && nextWeekStartDate !== selectedWeekStartDate
+  const calendarAnimationWeekStartDate = calendarAnimation ? getWeekStartDate(calendarAnimation.date) : selectedWeekStartDate
+  const previousWeekQuery = useQuery({
+    queryKey: activeScheduleItem
+      ? queryKeys.schedule(activeScheduleItem.item_type, activeScheduleItem.ruz_id, previousWeekStartDate)
+      : queryKeys.scheduleEmpty(),
+    queryFn: () => fetchScheduleOrThrow(activeScheduleItem, previousWeekStartDate),
+    enabled: shouldLoadPreviousWeek,
+  })
+  const nextWeekQuery = useQuery({
+    queryKey: activeScheduleItem
+      ? queryKeys.schedule(activeScheduleItem.item_type, activeScheduleItem.ruz_id, nextWeekStartDate)
+      : queryKeys.scheduleEmpty(),
+    queryFn: () => fetchScheduleOrThrow(activeScheduleItem, nextWeekStartDate),
+    enabled: shouldLoadNextWeek,
+  })
+  const calendarAnimationWeekQuery = useQuery({
+    queryKey: activeScheduleItem
+      ? queryKeys.schedule(activeScheduleItem.item_type, activeScheduleItem.ruz_id, calendarAnimationWeekStartDate)
+      : queryKeys.scheduleEmpty(),
+    queryFn: () => fetchScheduleOrThrow(activeScheduleItem, calendarAnimationWeekStartDate),
+    enabled: activeScheduleItem !== null && activeScheduleItem !== undefined && calendarAnimation !== null,
+  })
   const buildingMapLinksById = useMemo(
     () => new Map((buildingMapLinksQuery.data ?? []).map((link) => [link.building_id, link])),
     [buildingMapLinksQuery.data],
   )
-  const scheduleStale =
-    activeScheduleQuery.data !== undefined &&
-    'meta' in activeScheduleQuery.data &&
-    activeScheduleQuery.data.meta?.is_stale === true
   const scheduleChangeEvents = useMemo(() => {
     const events = scheduleChangesQuery.data ?? []
     if (import.meta.env.DEV && new URLSearchParams(window.location.search).has('scheduleChangesDemo')) {
@@ -107,56 +134,52 @@ export function SchedulePage() {
 
     return events
   }, [activeScheduleItem, activeScheduleQuery.data, scheduleChangesQuery.data, selectedDate])
-  const scheduleDayViews = useMemo(() => {
-    const today = toIsoDate(now)
-    const dates = [
-      getScheduleDate(addDays(selectedDate, -1), -1),
-      selectedDate,
-      getScheduleDate(addDays(selectedDate, 1), 1),
-    ]
-    const itemChangeEvents = scheduleChangeEvents.filter(
-      (event) => event.item_type === activeScheduleItem?.item_type && event.ruz_id === activeScheduleItem.ruz_id,
-    )
-
-    return dates.map((date) => {
-      const day = activeScheduleQuery.data?.days.find((scheduleDay) => scheduleDay.date === date)
-      const lessons =
-        day && hidePastLessons && date === today
-          ? day.lessons.filter(
-              (lesson, index, dayLessons) =>
-                !isLessonPast(lesson.time_end, now) ||
-                (showBreaks && index < dayLessons.length - 1 && isBreakActive(lesson, dayLessons[index + 1], now)),
-            )
-          : (day?.lessons ?? [])
-      const allTodayLessonsHidden = hidePastLessons && date === today && Boolean(day?.lessons.length) && lessons.length === 0
-
-      return {
-        date,
-        items: buildScheduleLessonItems(lessons, date, itemChangeEvents),
-        loading: scheduleTourActive ? false : activeScheduleQuery.isPending,
-        error: scheduleTourActive ? false : activeScheduleQuery.isError,
-        success: scheduleTourActive ? true : activeScheduleQuery.isSuccess,
-        stale: scheduleTourActive ? false : scheduleStale,
-        emptyStateTitle: allTodayLessonsHidden ? 'Сегодня занятий больше нет' : 'На этот день занятий нет',
-        emptyStateLottieSrc: allTodayLessonsHidden ? '/animations/lessons-finished.json' : '/animations/no-lessons.json',
-      }
-    })
-  }, [
-    activeScheduleItem,
-    activeScheduleQuery.data?.days,
-    activeScheduleQuery.isError,
-    activeScheduleQuery.isPending,
-    activeScheduleQuery.isSuccess,
-    hidePastLessons,
-    now,
-    scheduleChangeEvents,
-    scheduleStale,
-    scheduleTourActive,
-    selectedDate,
-    showBreaks,
-  ])
+  const today = toIsoDate(now)
+  const itemChangeEvents = scheduleChangeEvents.filter(
+    (event) => event.item_type === activeScheduleItem?.item_type && event.ruz_id === activeScheduleItem.ruz_id,
+  )
+  const scheduleDayViews = [previousDate, selectedDate, nextDate].map((date) =>
+    buildScheduleDayView({
+      date,
+      today,
+      itemChangeEvents,
+      activeScheduleQuery,
+      previousWeekQuery,
+      nextWeekQuery,
+      calendarAnimationWeekQuery,
+      selectedWeekStartDate,
+      previousWeekStartDate,
+      nextWeekStartDate,
+      calendarAnimationWeekStartDate,
+      hidePastLessons,
+      showBreaks,
+      scheduleTourActive,
+      now,
+    }),
+  )
   const [previousDayView, selectedDayView, nextDayView] = scheduleDayViews
   const displayedSelectedDayView = scheduleTourActive ? { ...selectedDayView, items: [scheduleTourLessonMock] } : selectedDayView
+  const calendarAnimationDayView = calendarAnimation
+    ? buildScheduleDayView({
+        date: calendarAnimation.date,
+        today,
+        itemChangeEvents,
+        activeScheduleQuery,
+        previousWeekQuery,
+        nextWeekQuery,
+        calendarAnimationWeekQuery,
+        selectedWeekStartDate,
+        previousWeekStartDate,
+        nextWeekStartDate,
+        calendarAnimationWeekStartDate,
+        hidePastLessons,
+        showBreaks,
+        scheduleTourActive,
+        now,
+      })
+    : null
+  const viewportPreviousDayView = calendarAnimation?.direction === -1 && calendarAnimationDayView ? calendarAnimationDayView : previousDayView
+  const viewportNextDayView = calendarAnimation?.direction === 1 && calendarAnimationDayView ? calendarAnimationDayView : nextDayView
 
   useEffect(() => {
     const intervalId = window.setInterval(() => setNow(new Date()), 1000)
@@ -181,6 +204,27 @@ export function SchedulePage() {
     }
 
     moveSelectedDate(days)
+  }
+
+  function selectCalendarDate(date: string) {
+    const nextDate = getScheduleDate(date)
+    vibrateTap()
+
+    if (nextDate === selectedDate) {
+      return
+    }
+
+    const direction = nextDate > selectedDate ? 1 : -1
+    flushSync(() => setCalendarAnimation({ date: nextDate, direction }))
+    const commit = () => {
+      setSelectedDate(nextDate)
+      setCalendarAnimation(null)
+    }
+    if (scheduleViewportRef.current?.animateToDate(direction, commit)) {
+      return
+    }
+
+    commit()
   }
 
   if (user.status === 'loading') {
@@ -230,10 +274,7 @@ export function SchedulePage() {
         selectedDate={selectedDate}
         dateAnchor={dateAnchor}
         onDateAnchorChange={setDateAnchor}
-        onSelectedDateChange={(date) => {
-          vibrateTap()
-          setSelectedDate(getScheduleDate(date))
-        }}
+        onSelectedDateChange={selectCalendarDate}
         onMoveSelectedDate={animateSelectedDate}
       />
       <ScheduleHeaderTour
@@ -246,9 +287,10 @@ export function SchedulePage() {
       <SwipeableScheduleViewport
         ref={scheduleViewportRef}
         disabled={scheduleTourActive}
-        previous={renderScheduleDay(previousDayView, showBreaks, now, handleLessonClick, () => void activeScheduleQuery.refetch())}
-        current={renderScheduleDay(displayedSelectedDayView, showBreaks, now, handleLessonClick, () => void activeScheduleQuery.refetch())}
-        next={renderScheduleDay(nextDayView, showBreaks, now, handleLessonClick, () => void activeScheduleQuery.refetch())}
+        pageKeys={[viewportPreviousDayView.date, displayedSelectedDayView.date, viewportNextDayView.date]}
+        previous={renderScheduleDay(viewportPreviousDayView, showBreaks, now, handleLessonClick)}
+        current={renderScheduleDay(displayedSelectedDayView, showBreaks, now, handleLessonClick)}
+        next={renderScheduleDay(viewportNextDayView, showBreaks, now, handleLessonClick)}
         onDateCommit={moveSelectedDate}
       />
       <ScheduleFavoritesDrawer
@@ -326,6 +368,77 @@ type ScheduleDayView = {
   stale: boolean
   emptyStateTitle: string
   emptyStateLottieSrc: string
+  onRefresh: () => unknown
+}
+
+type BuildScheduleDayViewParams = {
+  date: string
+  today: string
+  itemChangeEvents: Parameters<typeof buildScheduleLessonItems>[2]
+  activeScheduleQuery: ScheduleWeekQuery
+  previousWeekQuery: ScheduleWeekQuery
+  nextWeekQuery: ScheduleWeekQuery
+  calendarAnimationWeekQuery?: ScheduleWeekQuery
+  selectedWeekStartDate: string
+  previousWeekStartDate: string
+  nextWeekStartDate: string
+  calendarAnimationWeekStartDate?: string
+  hidePastLessons: boolean
+  showBreaks: boolean
+  scheduleTourActive: boolean
+  now: Date
+}
+
+function buildScheduleDayView({
+  date,
+  today,
+  itemChangeEvents,
+  activeScheduleQuery,
+  previousWeekQuery,
+  nextWeekQuery,
+  calendarAnimationWeekQuery,
+  selectedWeekStartDate,
+  previousWeekStartDate,
+  nextWeekStartDate,
+  calendarAnimationWeekStartDate,
+  hidePastLessons,
+  showBreaks,
+  scheduleTourActive,
+  now,
+}: BuildScheduleDayViewParams): ScheduleDayView {
+  const weekQuery = getScheduleWeekQuery(
+    date,
+    selectedWeekStartDate,
+    activeScheduleQuery,
+    previousWeekStartDate,
+    previousWeekQuery,
+    nextWeekStartDate,
+    nextWeekQuery,
+    calendarAnimationWeekStartDate,
+    calendarAnimationWeekQuery,
+  )
+  const day = weekQuery.data?.days.find((scheduleDay) => scheduleDay.date === date)
+  const lessons =
+    day && hidePastLessons && date === today
+      ? day.lessons.filter(
+          (lesson, index, dayLessons) =>
+            !isLessonPast(lesson.time_end, now) ||
+            (showBreaks && index < dayLessons.length - 1 && isBreakActive(lesson, dayLessons[index + 1], now)),
+        )
+      : (day?.lessons ?? [])
+  const allTodayLessonsHidden = hidePastLessons && date === today && Boolean(day?.lessons.length) && lessons.length === 0
+
+  return {
+    date,
+    items: buildScheduleLessonItems(lessons, date, itemChangeEvents),
+    loading: scheduleTourActive ? false : weekQuery.isPending,
+    error: scheduleTourActive ? false : weekQuery.isError,
+    success: scheduleTourActive ? true : weekQuery.isSuccess,
+    stale: scheduleTourActive ? false : isScheduleStale(weekQuery.data),
+    emptyStateTitle: allTodayLessonsHidden ? 'Сегодня занятий больше нет' : 'На этот день занятий нет',
+    emptyStateLottieSrc: allTodayLessonsHidden ? '/animations/lessons-finished.json' : '/animations/no-lessons.json',
+    onRefresh: weekQuery.refetch,
+  }
 }
 
 function renderScheduleDay(
@@ -333,7 +446,6 @@ function renderScheduleDay(
   showBreaks: boolean,
   now: Date,
   onLessonClick: (item: ScheduleLessonItem) => void,
-  onRefresh: () => void,
 ) {
   return (
     <ScheduleList
@@ -347,7 +459,53 @@ function renderScheduleDay(
       emptyStateTitle={dayView.emptyStateTitle}
       emptyStateLottieSrc={dayView.emptyStateLottieSrc}
       onLessonClick={onLessonClick}
-      onRefresh={onRefresh}
+      onRefresh={() => {
+        void dayView.onRefresh()
+      }}
     />
   )
+}
+
+function fetchScheduleOrThrow(item: Parameters<typeof fetchSchedule>[0] | null | undefined, weekStartDate: string) {
+  if (!item) {
+    throw new Error('Schedule item is not selected')
+  }
+
+  return fetchSchedule(item, weekStartDate)
+}
+
+type ScheduleWeekQuery = Pick<UseQueryResult<Schedule>, 'data' | 'isPending' | 'isError' | 'isSuccess' | 'refetch'>
+
+function getScheduleWeekQuery(
+  date: string,
+  selectedWeekStartDate: string,
+  activeScheduleQuery: ScheduleWeekQuery,
+  previousWeekStartDate: string,
+  previousWeekQuery: ScheduleWeekQuery,
+  nextWeekStartDate: string,
+  nextWeekQuery: ScheduleWeekQuery,
+  calendarAnimationWeekStartDate?: string,
+  calendarAnimationWeekQuery?: ScheduleWeekQuery,
+) {
+  const weekStartDate = getWeekStartDate(date)
+  if (
+    calendarAnimationWeekQuery &&
+    calendarAnimationWeekStartDate &&
+    weekStartDate === calendarAnimationWeekStartDate &&
+    weekStartDate !== selectedWeekStartDate
+  ) {
+    return calendarAnimationWeekQuery
+  }
+  if (weekStartDate === previousWeekStartDate && previousWeekStartDate !== selectedWeekStartDate) {
+    return previousWeekQuery
+  }
+  if (weekStartDate === nextWeekStartDate && nextWeekStartDate !== selectedWeekStartDate) {
+    return nextWeekQuery
+  }
+
+  return activeScheduleQuery
+}
+
+function isScheduleStale(schedule: Schedule | undefined) {
+  return schedule !== undefined && 'meta' in schedule && schedule.meta?.is_stale === true
 }

@@ -5,6 +5,7 @@ export const emptyStateLottieSources = [
   '/animations/lessons-finished.json',
   '/animations/no-lessons.json',
   '/animations/not-found.json',
+  '/animations/schedule-error.json',
   '/animations/start-typing-group.json',
 ] as const
 

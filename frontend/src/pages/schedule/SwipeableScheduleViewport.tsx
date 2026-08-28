@@ -7,6 +7,7 @@ import { centeredFixedSurfaceSx } from '../../shared/ui/layout'
 
 type SwipeableScheduleViewportProps = {
   disabled?: boolean
+  pageKeys: readonly [string, string, string]
   previous: ReactNode
   current: ReactNode
   next: ReactNode
@@ -14,7 +15,7 @@ type SwipeableScheduleViewportProps = {
 }
 
 export type SwipeableScheduleViewportHandle = {
-  animateToDate: (days: -1 | 1) => boolean
+  animateToDate: (days: -1 | 1, onCommit?: () => void) => boolean
 }
 
 type SwipeState = {
@@ -31,10 +32,13 @@ type SwipeState = {
 const dragIntentThreshold = 8
 const commitDistance = 72
 const commitVelocity = 0.55
+const settleTransition = { duration: 0.18, ease: [0.2, 0, 0, 1] } as const
+const snapBackTransition = { duration: 0.14, ease: [0.2, 0, 0, 1] } as const
 
 export const SwipeableScheduleViewport = forwardRef<SwipeableScheduleViewportHandle, SwipeableScheduleViewportProps>(function SwipeableScheduleViewport(
   {
     disabled = false,
+    pageKeys,
     previous,
     current,
     next,
@@ -50,7 +54,7 @@ export const SwipeableScheduleViewport = forwardRef<SwipeableScheduleViewportHan
   const [width, setWidth] = useState(0)
   const canSwipe = !disabled && !reduceMotion
 
-  const animateToDate = useCallback((days: -1 | 1, pageWidth: number) => {
+  const animateToDate = useCallback((days: -1 | 1, pageWidth: number, onCommit?: () => void) => {
     if (animating.current) {
       return
     }
@@ -58,20 +62,27 @@ export const SwipeableScheduleViewport = forwardRef<SwipeableScheduleViewportHan
     animating.current = true
     const target = days > 0 ? -pageWidth * 2 : 0
 
-    void animate(x, target, { type: 'spring', stiffness: 420, damping: 38 }).then(() => {
-      flushSync(() => onDateCommit(days))
+    void animate(x, target, settleTransition).then(() => {
+      flushSync(() => {
+        if (onCommit) {
+          onCommit()
+          return
+        }
+
+        onDateCommit(days)
+      })
       x.set(-pageWidth)
       animating.current = false
     })
   }, [onDateCommit, x])
 
   useImperativeHandle(ref, () => ({
-    animateToDate(days) {
+    animateToDate(days, onCommit) {
       if (disabled || reduceMotion || width <= 0) {
         return false
       }
 
-      animateToDate(days, width)
+      animateToDate(days, width, onCommit)
       return true
     },
   }), [animateToDate, disabled, reduceMotion, width])
@@ -168,7 +179,7 @@ export const SwipeableScheduleViewport = forwardRef<SwipeableScheduleViewportHan
     const shouldCommit = Math.abs(deltaX) > Math.max(commitDistance, state.width * 0.22) || Math.abs(velocity) > commitVelocity
 
     if (!shouldCommit) {
-      void animate(x, -state.width, { type: 'spring', stiffness: 420, damping: 38 })
+      void animate(x, -state.width, snapBackTransition)
       return
     }
 
@@ -180,7 +191,7 @@ export const SwipeableScheduleViewport = forwardRef<SwipeableScheduleViewportHan
     const state = swipeState.current
     swipeState.current = null
     if (state?.dragging) {
-      void animate(x, -state.width, { type: 'spring', stiffness: 420, damping: 38 })
+      void animate(x, -state.width, snapBackTransition)
     }
   }
 
@@ -214,18 +225,21 @@ export const SwipeableScheduleViewport = forwardRef<SwipeableScheduleViewportHan
           width: width > 0 ? width * 3 : '300%',
           height: 1,
           willChange: canSwipe ? 'transform' : undefined,
+          backfaceVisibility: 'hidden',
+          contain: 'layout paint style',
         }}
       >
         {[previous, current, next].map((content, index) => (
           <Box
-            key={index}
+            key={pageKeys[index]}
             sx={{
               width: width || '100%',
               height: 1,
               flex: '0 0 auto',
               display: 'flex',
               flexDirection: 'column',
-              px: { xs: 2, sm: 3 },
+              overflow: 'hidden',
+              contain: 'layout paint',
             }}
           >
             {content}
