@@ -6,11 +6,17 @@ import type { SxProps, Theme } from '@mui/material/styles'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { waitForBootTask } from '../../app/boot'
-import { isEmptyStateLottieReady, loadLottieSvg, markEmptyStateLottieReady } from './empty-state-lotties'
+import {
+  getLoadedEmptyStateLottie,
+  isEmptyStateLottieReady,
+  loadEmptyStateLottie,
+  loadLottieComponent,
+  markEmptyStateLottieReady,
+} from './empty-state-lotties'
 
-const LottieSvg = lazy(loadLottieSvg)
+const Lottie = lazy(loadLottieComponent)
 const emptyStateLottieSize = 144
 
 type EmptyStateBaseProps = {
@@ -66,7 +72,15 @@ export function EmptyState({ icon: Icon, lottieSrc, title, description, actionLa
 
 function EmptyStateLottie({ lottieSrc, reduceMotion }: { lottieSrc: string | object; reduceMotion: boolean }) {
   const [ready, setReady] = useState(() => isEmptyStateLottieReady(lottieSrc) && !document.getElementById('boot-splash'))
+  const [animationData, setAnimationData] = useState(() => getLoadedEmptyStateLottie(lottieSrc))
   const completeBootTaskRef = useRef<() => void>(() => undefined)
+
+  const handleReady = useCallback(() => {
+    markEmptyStateLottieReady(lottieSrc)
+    completeBootTaskRef.current()
+    completeBootTaskRef.current = () => undefined
+    setReady(true)
+  }, [lottieSrc])
 
   useEffect(() => {
     if (ready) {
@@ -81,25 +95,50 @@ function EmptyStateLottie({ lottieSrc, reduceMotion }: { lottieSrc: string | obj
     }
   }, [ready])
 
-  function handleReady() {
-    markEmptyStateLottieReady(lottieSrc)
-    completeBootTaskRef.current()
-    completeBootTaskRef.current = () => undefined
-    setReady(true)
-  }
+  useEffect(() => {
+    if (typeof lottieSrc !== 'string') {
+      setAnimationData(lottieSrc)
+      return
+    }
+
+    const cached = getLoadedEmptyStateLottie(lottieSrc)
+    if (cached) {
+      setAnimationData(cached)
+      return
+    }
+
+    let active = true
+    void loadEmptyStateLottie(lottieSrc)
+      .then((data) => {
+        if (active) {
+          setAnimationData(data)
+        }
+      })
+      .catch(() => {
+        if (active) {
+          handleReady()
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [handleReady, lottieSrc])
 
   return (
     <Box sx={{ width: emptyStateLottieSize, height: emptyStateLottieSize, position: 'relative', display: 'grid', placeItems: 'center' }}>
       {ready ? null : <Skeleton variant="rounded" width={emptyStateLottieSize} height={emptyStateLottieSize} sx={{ borderRadius: 4 }} />}
       <Suspense fallback={null}>
-        <LottieSvg
-          src={lottieSrc}
-          autoplay={!reduceMotion}
-          loop={!reduceMotion}
-          subscriptions={{ ready: handleReady, error: handleReady }}
-          style={{ position: 'absolute', inset: 0, width: emptyStateLottieSize, height: emptyStateLottieSize, opacity: ready ? 1 : 0 }}
-          aria-hidden
-        />
+        {animationData ? (
+          <Lottie
+            src={animationData}
+            autoplay={!reduceMotion}
+            loop={!reduceMotion}
+            subscriptions={{ ready: handleReady, error: handleReady }}
+            style={{ position: 'absolute', inset: 0, width: emptyStateLottieSize, height: emptyStateLottieSize, opacity: ready ? 1 : 0 }}
+            aria-hidden
+          />
+        ) : null}
       </Suspense>
     </Box>
   )

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { apiPost, apiPostForm } from './http'
+import { apiGet, apiPost, apiPostForm } from './http'
 
 const dormitoryPaymentPaySchema = z.object({
   name: z.string().nullable(),
@@ -26,9 +26,31 @@ const feedbackSubmissionSchema = z.object({
   created_at: z.string(),
 })
 
+const academicPeriodSchema = z.object({
+  date: z.string(),
+  period_type: z.string(),
+})
+
+const academicPeriodRangeSchema = z.object({
+  start_date: z.string(),
+  end_date: z.string(),
+  period_type: z.string(),
+})
+
+const currentAcademicCalendarSchema = z.object({
+  group_name: z.string(),
+  direction_code: z.string(),
+  level: z.number(),
+  admission_year: z.number(),
+  current_periods: z.array(academicPeriodSchema),
+  next_period: academicPeriodSchema.nullable(),
+  periods: z.array(academicPeriodRangeSchema),
+})
+
 export type DormitoryPaymentLookup = z.infer<typeof dormitoryPaymentLookupSchema>
 export type FeedbackSubject = 'comment' | 'question' | 'bug' | 'feature'
 export type FeedbackSubmission = z.infer<typeof feedbackSubmissionSchema>
+export type CurrentAcademicCalendar = z.infer<typeof currentAcademicCalendarSchema>
 
 type FeedbackInput = {
   subject: FeedbackSubject
@@ -50,4 +72,8 @@ export async function submitFeedback(input: FeedbackInput): Promise<FeedbackSubm
     body.append('attachment', input.attachment)
   }
   return apiPostForm('/api/v1/services/feedback', body, feedbackSubmissionSchema)
+}
+
+export async function getCurrentAcademicCalendar(): Promise<CurrentAcademicCalendar> {
+  return apiGet('/api/v1/me/academic-calendar/current', currentAcademicCalendarSchema)
 }

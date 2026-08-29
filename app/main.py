@@ -8,6 +8,8 @@ import httpx
 import truststore
 from fastapi import FastAPI
 
+from app.academic_calendars.router import router as academic_calendars_router
+from app.academic_calendars.service import enqueue_academic_period_notifications
 from app.admissions.router import router as admissions_router
 from app.admissions.service import refresh_admissions
 from app.api.errors import setup_error_handlers
@@ -92,6 +94,9 @@ async def run_schedule_refresh_loop(refresh_lock: asyncio.Lock, ruz_client: RuzC
                 ruz=ruz_client,
                 in_process_lock=refresh_lock,
             )
+            async with SessionLocal() as db:
+                await enqueue_academic_period_notifications(db)
+                await db.commit()
         except asyncio.CancelledError:
             raise
         except Exception:
@@ -105,6 +110,7 @@ def create_app() -> FastAPI:
     setup_error_handlers(app)
     app.include_router(ruz_router, prefix=settings.api_v1_prefix)
     app.include_router(users_router, prefix=settings.api_v1_prefix)
+    app.include_router(academic_calendars_router, prefix=settings.api_v1_prefix)
     app.include_router(buildings_router, prefix=settings.api_v1_prefix)
     if settings.admissions_enabled:
         app.include_router(admissions_router, prefix=settings.api_v1_prefix)
