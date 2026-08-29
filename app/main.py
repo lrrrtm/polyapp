@@ -8,6 +8,7 @@ import httpx
 import truststore
 from fastapi import FastAPI
 
+from app.academic_calendars.importer import import_academic_calendars
 from app.academic_calendars.router import router as academic_calendars_router
 from app.academic_calendars.service import enqueue_academic_period_notifications
 from app.admissions.router import router as admissions_router
@@ -35,8 +36,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     schedule_refresh_lock = asyncio.Lock()
     admissions_refresh_task = None
     schedule_refresh_task = None
+    academic_calendars_refresh_task = None
     if settings.admissions_enabled and settings.admissions_refresh_enabled:
         admissions_refresh_task = asyncio.create_task(run_admissions_refresh_loop(admissions_refresh_lock))
+    if settings.academic_calendars_refresh_enabled:
+        academic_calendars_refresh_task = asyncio.create_task(run_academic_calendars_refresh_loop())
     async with httpx.AsyncClient(
         base_url=settings.ruz_base_url,
         timeout=httpx.Timeout(settings.ruz_timeout),
@@ -64,6 +68,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
                 schedule_refresh_task.cancel()
                 try:
                     await schedule_refresh_task
+                except asyncio.CancelledError:
+                    pass
+            if academic_calendars_refresh_task:
+                academic_calendars_refresh_task.cancel()
+                try:
+                    await academic_calendars_refresh_task
                 except asyncio.CancelledError:
                     pass
 
@@ -102,6 +112,25 @@ async def run_schedule_refresh_loop(refresh_lock: asyncio.Lock, ruz_client: RuzC
         except Exception:
             logger.exception("Schedule refresh failed")
         await asyncio.sleep(settings.schedule_refresh_interval_seconds)
+
+
+async def run_academic_calendars_refresh_loop() -> None:
+    settings = get_settings()
+    while True:
+        try:
+            async with httpx.AsyncClient(
+                timeout=httpx.Timeout(settings.spbstu_timeout),
+                verify=truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT),
+            ) as http:
+                async with SessionLocal() as db:
+                    count = await import_academic_calendars(db, http)
+                    await db.commit()
+                    logger.info("Academic calendars refresh imported %s calendars", count)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Academic calendars refresh failed")
+        await asyncio.sleep(settings.academic_calendars_refresh_interval_seconds)
 
 
 def create_app() -> FastAPI:

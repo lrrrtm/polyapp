@@ -34,6 +34,14 @@ class Settings(BaseSettings):
     )
     schedule_refresh_enabled: bool = Field(default=True, validation_alias="SCHEDULE_REFRESH_ENABLED")
     schedule_refresh_concurrency: int = Field(default=4, validation_alias="SCHEDULE_REFRESH_CONCURRENCY")
+    academic_calendars_refresh_interval_seconds: int = Field(
+        default=30 * 24 * 60 * 60,
+        validation_alias="ACADEMIC_CALENDARS_REFRESH_INTERVAL_SECONDS",
+    )
+    academic_calendars_refresh_enabled: bool = Field(
+        default=True,
+        validation_alias="ACADEMIC_CALENDARS_REFRESH_ENABLED",
+    )
     telegram_bot_token: str | None = Field(default=None, validation_alias="TELEGRAM_BOT_TOKEN")
     telegram_bot_username: str | None = Field(default=None, validation_alias="TELEGRAM_BOT_USERNAME")
     telegram_bot_enabled: bool = Field(default=False, validation_alias="TELEGRAM_BOT_ENABLED")
