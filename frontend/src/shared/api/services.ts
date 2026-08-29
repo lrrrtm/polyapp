@@ -42,6 +42,7 @@ const currentAcademicCalendarSchema = z.object({
   direction_code: z.string(),
   level: z.number(),
   admission_year: z.number(),
+  source_url: z.string(),
   current_periods: z.array(academicPeriodSchema),
   next_period: academicPeriodSchema.nullable(),
   periods: z.array(academicPeriodRangeSchema),

@@ -35,6 +35,7 @@ async def read_current_academic_calendar(
         direction_code=calendar.direction_code,
         level=calendar.level,
         admission_year=calendar.admission_year,
+        source_url=calendar.source_url,
         current_periods=[AcademicPeriodRead(date=period.date, period_type=period.period_type) for period in current_periods],
         next_period=AcademicPeriodRead(date=next_period.date, period_type=next_period.period_type) if next_period else None,
         periods=[

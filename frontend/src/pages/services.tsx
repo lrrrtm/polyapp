@@ -18,6 +18,7 @@ import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
 import type { InputBaseComponentProps } from '@mui/material/InputBase'
 import InputAdornment from '@mui/material/InputAdornment'
+import Link from '@mui/material/Link'
 import MenuItem from '@mui/material/MenuItem'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
@@ -120,7 +121,7 @@ export function ServicesPage() {
   const paymentQuery = useQuery({
     queryKey: queryKeys.dormitoryPayment(storedContract),
     queryFn: () => lookupDormitoryPayment(storedContract ?? ''),
-    enabled: user.status === 'ready' && storedContract !== null,
+    enabled: user.status === 'ready' && storedContract !== null && detailsDrawerOpen,
   })
   const academicCalendarQuery = useQuery({
     queryKey: queryKeys.academicCalendar(),
@@ -171,9 +172,6 @@ export function ServicesPage() {
         <Stack spacing={2}>
           <DormitoryPaymentCard
             contract={storedContract}
-            lookup={paymentQuery.data}
-            loading={paymentQuery.isPending && storedContract !== null}
-            error={paymentQuery.isError ? paymentQuery.error.message : null}
             onOpenContract={() => {
               contractMutation.reset()
               setContractInput(contractToInputValue(storedContract ?? ''))
@@ -264,14 +262,9 @@ function AcademicCalendarCard({ onOpen }: { onOpen: () => void }) {
           <Stack direction="row" spacing={2} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
             <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', minWidth: 0 }}>
               <ServiceCardIcon icon={CalendarMonthOutlinedIcon} />
-              <Stack spacing={0.25} sx={{ minWidth: 0 }}>
-                <Typography variant="subtitle1" component="h1">
-                  Календарь учёбы
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Периоды семестра, сессии и каникул
-                </Typography>
-              </Stack>
+              <Typography variant="subtitle1" component="h1" noWrap sx={{ minWidth: 0 }}>
+                Календарь учёбы
+              </Typography>
             </Stack>
             <ChevronRightIcon color="action" sx={{ flexShrink: 0 }} />
           </Stack>
@@ -298,14 +291,9 @@ function FeedbackCard({ onOpen }: { onOpen: () => void }) {
           <Stack direction="row" spacing={2} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
             <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', minWidth: 0 }}>
               <ServiceCardIcon icon={FeedbackOutlinedIcon} />
-              <Stack spacing={0.25} sx={{ minWidth: 0 }}>
-                <Typography variant="subtitle1" component="h1">
-                  Обратная связь
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Помоги нам сделать приложение лучше
-                </Typography>
-              </Stack>
+              <Typography variant="subtitle1" component="h1" noWrap sx={{ minWidth: 0 }}>
+                Обратная связь
+              </Typography>
             </Stack>
             <ChevronRightIcon color="action" sx={{ flexShrink: 0 }} />
           </Stack>
@@ -330,6 +318,7 @@ function AcademicCalendarDrawer({
 }) {
   const [selectedAcademicYear, setSelectedAcademicYear] = useState('')
   const [selectedDay, setSelectedDay] = useState<SelectedAcademicCalendarDay | null>(null)
+  const [selectedDayDrawerOpen, setSelectedDayDrawerOpen] = useState(false)
   const academicYears = calendar ? getAcademicYearTabs(calendar.periods) : []
   const selectedYear = academicYears.find((year) => year.key === selectedAcademicYear) ?? academicYears[0]
 
@@ -351,7 +340,10 @@ function AcademicCalendarDrawer({
       <BottomDrawer
         open={open}
         onClose={onClose}
-        onAfterClose={() => setSelectedDay(null)}
+        onAfterClose={() => {
+          setSelectedDay(null)
+          setSelectedDayDrawerOpen(false)
+        }}
         title="Календарь учёбы"
         maxHeight="78dvh"
         contentSx={{ display: 'flex', flexDirection: 'column', overflowY: 'hidden' }}
@@ -379,36 +371,50 @@ function AcademicCalendarDrawer({
               </Tabs>
             </Box>
             <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-              <Box
-                sx={{
-                  px: 3,
-                  pt: 2,
-                  pb: 4,
-                  display: 'grid',
-                  gridTemplateColumns: {
-                    xs: `minmax(0, ${academicCalendarGridMaxWidth}px)`,
-                    md: `repeat(2, minmax(0, ${academicCalendarGridMaxWidth}px))`,
-                    lg: `repeat(3, minmax(0, ${academicCalendarGridMaxWidth}px))`,
-                  },
-                  gap: 3,
-                  alignItems: 'start',
-                  justifyContent: 'center',
-                }}
-              >
-                {selectedYear?.months.map((month) => (
-                  <AcademicMonthCalendar
-                    key={`${month.getFullYear()}-${month.getMonth()}`}
-                    month={month}
-                    periods={selectedYear.periods}
-                    onDaySelect={setSelectedDay}
-                  />
-                ))}
-              </Box>
+              <Stack spacing={3} sx={{ px: 3, pt: 2, pb: 4 }}>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: {
+                      xs: `minmax(0, ${academicCalendarGridMaxWidth}px)`,
+                      md: `repeat(2, minmax(0, ${academicCalendarGridMaxWidth}px))`,
+                      lg: `repeat(3, minmax(0, ${academicCalendarGridMaxWidth}px))`,
+                    },
+                    gap: 3,
+                    alignItems: 'start',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {selectedYear?.months.map((month) => (
+                    <AcademicMonthCalendar
+                      key={`${month.getFullYear()}-${month.getMonth()}`}
+                      month={month}
+                      periods={selectedYear.periods}
+                      onDaySelect={(day) => {
+                        setSelectedDay(day)
+                        setSelectedDayDrawerOpen(true)
+                      }}
+                    />
+                  ))}
+                </Box>
+                <Typography variant="body2" color="text.secondary" sx={{ width: 1, textAlign: 'center' }}>
+                  Данные взяты из{' '}
+                  <Link href={calendar.source_url} target="_blank" rel="noreferrer" underline="hover">
+                    календарного учебного графика
+                  </Link>{' '}
+                  учебной программы {calendar.direction_code}
+                </Typography>
+              </Stack>
             </Box>
           </Stack>
         ) : null}
       </BottomDrawer>
-      <BottomDrawer open={open && selectedDay !== null} onClose={() => setSelectedDay(null)} maxHeight="32dvh">
+      <BottomDrawer
+        open={open && selectedDayDrawerOpen}
+        onClose={() => setSelectedDayDrawerOpen(false)}
+        onAfterClose={() => setSelectedDay(null)}
+        maxHeight="32dvh"
+      >
         {selectedDay ? (
           <BottomDrawerContent spacing={0.75}>
             <Typography variant="h6" component="h3">
@@ -750,22 +756,13 @@ function isAllowedFeedbackAttachment(file: File) {
 
 function DormitoryPaymentCard({
   contract,
-  lookup,
-  loading,
-  error,
   onOpenContract,
   onOpenDetails,
 }: {
   contract: string | null
-  lookup?: Awaited<ReturnType<typeof lookupDormitoryPayment>>
-  loading: boolean
-  error: string | null
   onOpenContract: () => void
   onOpenDetails: () => void
 }) {
-  const amountDue = lookup?.amount_due ?? 0
-  const paymentSubtitle = getPaymentCardSubtitle(lookup, loading, error, amountDue)
-
   return (
     <Card
       elevation={0}
@@ -779,66 +776,19 @@ function DormitoryPaymentCard({
     >
       <CardContentRoot interactive onClick={contract ? onOpenDetails : onOpenContract}>
         <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-          {contract ? (
-            <Stack direction="row" spacing={2} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-              <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', minWidth: 0 }}>
-                <ServiceCardIcon icon={AccountBalanceWalletOutlinedIcon} />
-                <Stack spacing={0.25} sx={{ minWidth: 0 }}>
-                  <Typography variant="subtitle1" component="h1">
-                    Оплата общежития
-                  </Typography>
-                  {loading ? (
-                    <Skeleton variant="text" width={108} />
-                  ) : (
-                    <Typography variant="body2" color={error ? 'error' : 'text.secondary'} noWrap>
-                      {paymentSubtitle}
-                    </Typography>
-                  )}
-                </Stack>
-              </Stack>
-              <ChevronRightIcon color="action" sx={{ flexShrink: 0 }} />
+          <Stack direction="row" spacing={2} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', minWidth: 0 }}>
+              <ServiceCardIcon icon={AccountBalanceWalletOutlinedIcon} />
+              <Typography variant="subtitle1" component="h1" noWrap sx={{ minWidth: 0 }}>
+                Оплата общежития
+              </Typography>
             </Stack>
-          ) : (
-            <Stack direction="row" spacing={2} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-              <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', minWidth: 0 }}>
-                <ServiceCardIcon icon={AccountBalanceWalletOutlinedIcon} />
-                <Stack spacing={0.25} sx={{ minWidth: 0 }}>
-                  <Typography variant="subtitle1" component="h1">
-                    Оплата общежития
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Номер договора не указан
-                  </Typography>
-                </Stack>
-              </Stack>
-              <ChevronRightIcon color="action" sx={{ flexShrink: 0 }} />
-            </Stack>
-          )}
+            <ChevronRightIcon color="action" sx={{ flexShrink: 0 }} />
+          </Stack>
         </CardContent>
       </CardContentRoot>
     </Card>
   )
-}
-
-function getPaymentCardSubtitle(
-  lookup: Awaited<ReturnType<typeof lookupDormitoryPayment>> | undefined,
-  loading: boolean,
-  error: string | null,
-  amountDue: number,
-) {
-  if (loading) {
-    return ''
-  }
-
-  if (error) {
-    return 'Не удалось обновить'
-  }
-
-  if (!lookup?.valid) {
-    return 'Номер договора не найден'
-  }
-
-  return amountDue > 0 ? `К оплате ${formatRubles(amountDue)}` : 'Всё оплачено'
 }
 
 function DeleteContractDrawer({

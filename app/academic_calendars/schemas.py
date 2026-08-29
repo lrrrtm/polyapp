@@ -19,6 +19,7 @@ class CurrentAcademicCalendarRead(BaseModel):
     direction_code: str
     level: int
     admission_year: int
+    source_url: str
     current_periods: list[AcademicPeriodRead]
     next_period: AcademicPeriodRead | None
     periods: list[AcademicPeriodRangeRead]
