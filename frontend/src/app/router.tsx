@@ -1,26 +1,29 @@
 import { createBrowserRouter, Navigate } from 'react-router'
-import { HelloPage } from '../pages/hello'
-import { RegisterPage } from '../pages/register'
-import { RootPage } from '../pages/root'
-import { SchedulePage } from '../pages/schedule'
-import { ServicesPage } from '../pages/services'
-import { SettingsPage } from '../pages/settings'
-import { FreshmanPage } from '../pages/freshman'
 import { TabsLayout } from '../shared/ui/TabsLayout'
 import { appConfig } from './config'
+import { LazyRoute } from './LazyRoute'
+import { lazyPage } from './lazyPage'
+
+const FreshmanPage = lazyPage(() => import('../pages/freshman'), 'FreshmanPage')
+const HelloPage = lazyPage(() => import('../pages/hello'), 'HelloPage')
+const RegisterPage = lazyPage(() => import('../pages/register'), 'RegisterPage')
+const RootPage = lazyPage(() => import('../pages/root'), 'RootPage')
+const SchedulePage = lazyPage(() => import('../pages/schedule'), 'SchedulePage')
+const ServicesPage = lazyPage(() => import('../pages/services'), 'ServicesPage')
+const SettingsPage = lazyPage(() => import('../pages/settings'), 'SettingsPage')
 
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <RootPage />,
+    element: <LazyRoute component={RootPage} />,
   },
   {
     path: '/hello',
-    element: <HelloPage />,
+    element: <LazyRoute component={HelloPage} />,
   },
   {
     path: '/register',
-    element: <RegisterPage />,
+    element: <LazyRoute component={RegisterPage} />,
   },
   ...(!appConfig.VITE_ADMISSIONS_ENABLED
     ? [
@@ -37,21 +40,21 @@ export const router = createBrowserRouter([
         ? [
             {
               path: '/freshman',
-              element: <FreshmanPage />,
+              element: <LazyRoute component={FreshmanPage} />,
             },
           ]
         : []),
       {
         path: '/schedule',
-        element: <SchedulePage />,
+        element: <LazyRoute component={SchedulePage} />,
       },
       {
         path: '/services',
-        element: <ServicesPage />,
+        element: <LazyRoute component={ServicesPage} />,
       },
       {
         path: '/settings',
-        element: <SettingsPage />,
+        element: <LazyRoute component={SettingsPage} />,
       },
     ],
   },

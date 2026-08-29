@@ -135,49 +135,106 @@ export function SchedulePage() {
     return events
   }, [activeScheduleItem, activeScheduleQuery.data, scheduleChangesQuery.data, selectedDate])
   const today = toIsoDate(now)
-  const itemChangeEvents = scheduleChangeEvents.filter(
-    (event) => event.item_type === activeScheduleItem?.item_type && event.ruz_id === activeScheduleItem.ruz_id,
+  const nowMinute = Math.floor(now.getTime() / 60_000)
+  const itemChangeEvents = useMemo(
+    () =>
+      scheduleChangeEvents.filter(
+        (event) => event.item_type === activeScheduleItem?.item_type && event.ruz_id === activeScheduleItem.ruz_id,
+      ),
+    [activeScheduleItem, scheduleChangeEvents],
   )
-  const scheduleDayViews = [previousDate, selectedDate, nextDate].map((date) =>
-    buildScheduleDayView({
-      date,
-      today,
-      itemChangeEvents,
-      activeScheduleQuery,
-      previousWeekQuery,
-      nextWeekQuery,
-      calendarAnimationWeekQuery,
-      selectedWeekStartDate,
-      previousWeekStartDate,
-      nextWeekStartDate,
+  const activeScheduleViewQuery = useScheduleWeekQuerySnapshot(activeScheduleQuery)
+  const previousWeekViewQuery = useScheduleWeekQuerySnapshot(previousWeekQuery)
+  const nextWeekViewQuery = useScheduleWeekQuerySnapshot(nextWeekQuery)
+  const calendarAnimationWeekViewQuery = useScheduleWeekQuerySnapshot(calendarAnimationWeekQuery)
+  const scheduleDayViews = useMemo(
+    () => {
+      const buildNow = new Date(nowMinute * 60_000)
+
+      return [previousDate, selectedDate, nextDate].map((date) =>
+        buildScheduleDayView({
+          date,
+          today,
+          itemChangeEvents,
+          activeScheduleQuery: activeScheduleViewQuery,
+          previousWeekQuery: previousWeekViewQuery,
+          nextWeekQuery: nextWeekViewQuery,
+          calendarAnimationWeekQuery: calendarAnimationWeekViewQuery,
+          selectedWeekStartDate,
+          previousWeekStartDate,
+          nextWeekStartDate,
+          calendarAnimationWeekStartDate,
+          hidePastLessons,
+          showBreaks,
+          scheduleTourActive,
+          now: buildNow,
+        }),
+      )
+    },
+    [
+      activeScheduleViewQuery,
+      calendarAnimationWeekViewQuery,
       calendarAnimationWeekStartDate,
       hidePastLessons,
-      showBreaks,
+      itemChangeEvents,
+      nextDate,
+      nextWeekViewQuery,
+      nextWeekStartDate,
+      nowMinute,
+      previousDate,
+      previousWeekViewQuery,
+      previousWeekStartDate,
       scheduleTourActive,
-      now,
-    }),
+      selectedDate,
+      selectedWeekStartDate,
+      showBreaks,
+      today,
+    ],
   )
   const [previousDayView, selectedDayView, nextDayView] = scheduleDayViews
   const displayedSelectedDayView = scheduleTourActive ? { ...selectedDayView, items: [scheduleTourLessonMock] } : selectedDayView
-  const calendarAnimationDayView = calendarAnimation
-    ? buildScheduleDayView({
-        date: calendarAnimation.date,
-        today,
-        itemChangeEvents,
-        activeScheduleQuery,
-        previousWeekQuery,
-        nextWeekQuery,
-        calendarAnimationWeekQuery,
-        selectedWeekStartDate,
-        previousWeekStartDate,
-        nextWeekStartDate,
-        calendarAnimationWeekStartDate,
-        hidePastLessons,
-        showBreaks,
-        scheduleTourActive,
-        now,
-      })
-    : null
+  const calendarAnimationDayView = useMemo(
+    () => {
+      const buildNow = new Date(nowMinute * 60_000)
+
+      return calendarAnimation
+        ? buildScheduleDayView({
+            date: calendarAnimation.date,
+            today,
+            itemChangeEvents,
+            activeScheduleQuery: activeScheduleViewQuery,
+            previousWeekQuery: previousWeekViewQuery,
+            nextWeekQuery: nextWeekViewQuery,
+            calendarAnimationWeekQuery: calendarAnimationWeekViewQuery,
+            selectedWeekStartDate,
+            previousWeekStartDate,
+            nextWeekStartDate,
+            calendarAnimationWeekStartDate,
+            hidePastLessons,
+            showBreaks,
+            scheduleTourActive,
+            now: buildNow,
+          })
+        : null
+    },
+    [
+      activeScheduleViewQuery,
+      calendarAnimation,
+      calendarAnimationWeekViewQuery,
+      calendarAnimationWeekStartDate,
+      hidePastLessons,
+      itemChangeEvents,
+      nextWeekViewQuery,
+      nextWeekStartDate,
+      nowMinute,
+      previousWeekViewQuery,
+      previousWeekStartDate,
+      scheduleTourActive,
+      selectedWeekStartDate,
+      showBreaks,
+      today,
+    ],
+  )
   const viewportPreviousDayView = calendarAnimation?.direction === -1 && calendarAnimationDayView ? calendarAnimationDayView : previousDayView
   const viewportNextDayView = calendarAnimation?.direction === 1 && calendarAnimationDayView ? calendarAnimationDayView : nextDayView
 
@@ -475,6 +532,37 @@ function fetchScheduleOrThrow(item: Parameters<typeof fetchSchedule>[0] | null |
 }
 
 type ScheduleWeekQuery = Pick<UseQueryResult<Schedule>, 'data' | 'isPending' | 'isError' | 'isSuccess' | 'refetch'>
+
+function useScheduleWeekQuerySnapshot(query: ScheduleWeekQuery): ScheduleWeekQuery {
+  const ref = useRef<ScheduleWeekQuery | null>(null)
+  const snapshot = pickScheduleWeekQuery(query)
+
+  if (!ref.current || !isSameScheduleWeekQuery(ref.current, snapshot)) {
+    ref.current = snapshot
+  }
+
+  return ref.current
+}
+
+function pickScheduleWeekQuery(query: ScheduleWeekQuery): ScheduleWeekQuery {
+  return {
+    data: query.data,
+    isError: query.isError,
+    isPending: query.isPending,
+    isSuccess: query.isSuccess,
+    refetch: query.refetch,
+  }
+}
+
+function isSameScheduleWeekQuery(first: ScheduleWeekQuery, second: ScheduleWeekQuery) {
+  return (
+    first.data === second.data &&
+    first.isError === second.isError &&
+    first.isPending === second.isPending &&
+    first.isSuccess === second.isSuccess &&
+    first.refetch === second.refetch
+  )
+}
 
 function getScheduleWeekQuery(
   date: string,
