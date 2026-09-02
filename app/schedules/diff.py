@@ -62,10 +62,21 @@ def diff_schedules(old_payload: dict[str, Any], new_payload: dict[str, Any]) -> 
 
 def _lessons_by_key(payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
     lessons: dict[str, dict[str, Any]] = {}
+    counts: dict[str, int] = defaultdict(int)
     for day in payload.get("days", []):
-        for index, lesson in enumerate(day.get("lessons", [])):
+        for lesson in day.get("lessons", []):
             normalized = _normalize_lesson(day.get("date", ""), lesson)
-            lessons[f"{normalized['date']}|{normalized['time_start']}|{normalized['subject']}|{normalized['type']}|{index}"] = normalized
+            base_key = "|".join(
+                [
+                    str(normalized["date"]),
+                    str(normalized["time_start"]),
+                    str(normalized["time_end"]),
+                    str(normalized["subject"]),
+                    str(normalized["type"]),
+                ]
+            )
+            counts[base_key] += 1
+            lessons[f"{base_key}|{counts[base_key]}"] = normalized
     return lessons
 
 

@@ -19,7 +19,7 @@ from app.notifications.service import (
 )
 from app.bot.main import send_telegram_notification
 from app.notifications.schemas import NotificationSettingsUpdate
-from app.schemas.ruz import Auditorium, Building, Group, GroupSchedule, Lesson, Teacher, Week
+from app.schemas.ruz import Auditorium, Building, Group, GroupSchedule, Lesson, LessonType, Teacher, Week
 from app.schedules.service import save_group_schedule_cache
 from app.services.models import FeedbackRequest
 from app.users.deps import hash_identity_token
@@ -45,6 +45,7 @@ def make_schedule(
                         subject=subject,
                         time_start=time_start,
                         time_end=datetime(2026, 9, 2, 8, 30, tzinfo=UTC),
+                        typeObj=LessonType(name="Практика"),
                         auditories=[
                             Auditorium(id=1, name=auditorium_name, building=Building(id=11, name="Главное здание"))
                         ],
@@ -56,11 +57,24 @@ def make_schedule(
     )
 
 
-async def create_user_with_telegram(db: AsyncSession, *, notifications_enabled: bool = True) -> User:
+async def create_user_with_telegram(
+    db: AsyncSession,
+    *,
+    notifications_enabled: bool = True,
+    item_notifications_enabled: bool = True,
+) -> User:
     user = User(identity_hash="telegram-user")
     db.add(user)
     await db.flush()
-    db.add(UserScheduleItem(user_id=user.id, item_type="group", ruz_id=44302, is_primary=True))
+    db.add(
+        UserScheduleItem(
+            user_id=user.id,
+            item_type="group",
+            ruz_id=44302,
+            is_primary=True,
+            notifications_enabled=item_notifications_enabled,
+        )
+    )
     db.add(TelegramAccount(user_id=user.id, telegram_user_id=1001, telegram_chat_id=2002, is_active=True))
     await update_notification_settings(
         db,
@@ -169,11 +183,23 @@ async def test_schedule_change_creates_outbox_by_enabled_settings(override_db: N
     assert outbox[0].event_type == "auditorium_changed"
     assert "Изменилась аудитория" in outbox[0].text
     assert "4931102/40101" in outbox[0].text
+    assert "Практика" in outbox[0].text
+    assert "07:00–08:30" in outbox[0].text
+    assert "2026-09-02T07:00:00" not in outbox[0].text
 
 
 @pytest.mark.asyncio
 async def test_schedule_change_respects_disabled_settings(override_db: None, db_session: AsyncSession) -> None:
     await create_user_with_telegram(db_session, notifications_enabled=False)
+    await save_group_schedule_cache(db_session, make_schedule(auditorium_name="101"))
+    await save_group_schedule_cache(db_session, make_schedule(auditorium_name="102"))
+
+    assert list(await db_session.scalars(select(NotificationOutbox))) == []
+
+
+@pytest.mark.asyncio
+async def test_schedule_change_respects_disabled_schedule_item(override_db: None, db_session: AsyncSession) -> None:
+    await create_user_with_telegram(db_session, notifications_enabled=True, item_notifications_enabled=False)
     await save_group_schedule_cache(db_session, make_schedule(auditorium_name="101"))
     await save_group_schedule_cache(db_session, make_schedule(auditorium_name="102"))
 
@@ -188,12 +214,15 @@ async def test_schedule_change_event_types_enqueue_outbox(override_db: None, db_
     await save_group_schedule_cache(db_session, make_schedule(subject="Новая пара", time_start=datetime(2026, 9, 2, 9, 0, tzinfo=UTC)))
     await save_group_schedule_cache(db_session, make_schedule(subject="Новая пара", time_start=datetime(2026, 9, 2, 9, 0, tzinfo=UTC), teacher_name="Петров Пётр Петрович"))
 
-    event_types = [row.event_type for row in await db_session.scalars(select(NotificationOutbox))]
+    outbox = list(await db_session.scalars(select(NotificationOutbox)))
+    event_types = [row.event_type for row in outbox]
+    combined_message = next(row.text for row in outbox if row.event_type == "schedule_changes")
 
-    assert "lesson_removed" in event_types
-    assert "lesson_added" in event_types
+    assert "schedule_changes" in event_types
     assert "time_changed" in event_types
     assert "teacher_changed" in event_types
+    assert "Занятие отменено" in combined_message
+    assert "Занятие добавлено" in combined_message
 
 
 @pytest.mark.asyncio

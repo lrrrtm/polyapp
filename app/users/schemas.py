@@ -19,11 +19,16 @@ class FavoriteCreate(BaseModel):
     ruz_id: int = Field(gt=0)
 
 
+class ScheduleItemNotificationsUpdate(BaseModel):
+    notifications_enabled: bool
+
+
 class UserScheduleItemRead(UserModel):
     id: UUID
     item_type: ScheduleItemType
     ruz_id: int
     is_primary: bool
+    notifications_enabled: bool
     created_at: datetime
 
 

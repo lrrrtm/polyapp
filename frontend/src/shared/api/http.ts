@@ -50,6 +50,14 @@ export async function apiPut<TSchema extends z.ZodType>(
   return apiRequest('PUT', path, body, schema)
 }
 
+export async function apiPatch<TSchema extends z.ZodType>(
+  path: string,
+  body: unknown,
+  schema: TSchema,
+): Promise<z.infer<TSchema>> {
+  return apiRequest('PATCH', path, body, schema)
+}
+
 export async function apiPost<TSchema extends z.ZodType>(
   path: string,
   body: unknown,
@@ -88,7 +96,7 @@ export async function apiDelete(path: string): Promise<void> {
 }
 
 async function apiRequest<TSchema extends z.ZodType>(
-  method: 'GET' | 'POST' | 'PUT',
+  method: 'GET' | 'PATCH' | 'POST' | 'PUT',
   path: string,
   body: unknown,
   schema: TSchema,

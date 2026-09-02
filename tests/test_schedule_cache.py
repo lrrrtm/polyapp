@@ -3,7 +3,7 @@ from datetime import UTC, date, datetime
 import pytest
 from sqlalchemy import select
 
-from app.schemas.ruz import Auditorium, Building, Group, GroupSchedule, Lesson, Week
+from app.schemas.ruz import Auditorium, Building, Group, GroupSchedule, Lesson, Teacher, Week
 from app.schedules.diff import diff_schedules, schedule_payload
 from app.schedules.models import ScheduleChangeEvent
 from app.schedules.service import list_saved_group_ids, save_group_schedule_cache, schedule_week_starts
@@ -17,6 +17,7 @@ def make_schedule(
     time_start: datetime = datetime(2026, 9, 2, 7, 0, tzinfo=UTC),
     time_end: datetime = datetime(2026, 9, 2, 8, 30, tzinfo=UTC),
     auditorium_name: str = "101",
+    teacher_name: str = "Ферсман Александр Евгеньевич",
 ) -> GroupSchedule:
     return GroupSchedule(
         week=Week(date_start=date(2026, 8, 31), date_end=date(2026, 9, 6), is_odd=True),
@@ -37,10 +38,33 @@ def make_schedule(
                                 building=Building(id=11, name="Главное здание"),
                             )
                         ],
+                        teachers=[Teacher(id=1, full_name=teacher_name)],
                     )
                 ],
             }
         ],
+    )
+
+
+def make_schedule_with_lessons(lessons: list[Lesson]) -> GroupSchedule:
+    return GroupSchedule(
+        week=Week(date_start=date(2026, 8, 31), date_end=date(2026, 9, 6), is_odd=True),
+        group=Group(id=44302, name="4931102/40101"),
+        days=[
+            {
+                "weekday": 3,
+                "date": date(2026, 9, 2),
+                "lessons": lessons,
+            }
+        ],
+    )
+
+
+def make_lesson(subject: str, hour: int) -> Lesson:
+    return Lesson(
+        subject=subject,
+        time_start=datetime(2026, 9, 2, hour, 0, tzinfo=UTC),
+        time_end=datetime(2026, 9, 2, hour + 1, 30, tzinfo=UTC),
     )
 
 
@@ -83,6 +107,31 @@ def test_diff_treats_unique_time_move_as_update() -> None:
     assert changes[0]["fields"] == ["time_start"]
 
 
+def test_diff_does_not_readd_lessons_when_day_indexes_shift() -> None:
+    old_payload = schedule_payload(
+        make_schedule_with_lessons(
+            [
+                make_lesson("Иностранный язык", 5),
+                make_lesson("Алгоритмизация и программирование", 7),
+                make_lesson("Алгоритмизация и программирование", 9),
+            ]
+        )
+    )
+    new_payload = schedule_payload(
+        make_schedule_with_lessons(
+            [
+                make_lesson("Алгоритмизация и программирование", 7),
+                make_lesson("Алгоритмизация и программирование", 9),
+            ]
+        )
+    )
+
+    changes = diff_schedules(old_payload, new_payload)
+
+    assert [change["type"] for change in changes] == ["lesson_removed"]
+    assert changes[0]["lesson"]["subject"] == "Иностранный язык"
+
+
 @pytest.mark.asyncio
 async def test_save_group_schedule_cache_creates_change_event(override_db: None, db_session) -> None:
     await save_group_schedule_cache(db_session, make_schedule(auditorium_name="101"))
@@ -93,6 +142,21 @@ async def test_save_group_schedule_cache_creates_change_event(override_db: None,
     assert len(events) == 1
     assert events[0].changes[0]["type"] == "lesson_updated"
     assert events[0].changes[0]["fields"] == ["auditories"]
+
+
+@pytest.mark.asyncio
+async def test_save_group_schedule_cache_creates_change_event_for_teacher_update(
+    override_db: None,
+    db_session,
+) -> None:
+    await save_group_schedule_cache(db_session, make_schedule(teacher_name="Ферсман Александр Евгеньевич"))
+    await save_group_schedule_cache(db_session, make_schedule(teacher_name="Максимова Кристина Руслановна"))
+
+    events = list(await db_session.scalars(select(ScheduleChangeEvent)))
+
+    assert len(events) == 1
+    assert events[0].changes[0]["type"] == "lesson_updated"
+    assert events[0].changes[0]["fields"] == ["teachers"]
 
 
 @pytest.mark.asyncio
@@ -114,5 +178,11 @@ async def test_refresh_uses_distinct_saved_groups(override_db: None, db_session)
 
 
 def test_schedule_week_starts_covers_next_week_when_needed() -> None:
-    assert schedule_week_starts(date(2026, 8, 31)) == [date(2026, 8, 31)]
-    assert schedule_week_starts(date(2026, 9, 4)) == [date(2026, 8, 31), date(2026, 9, 7)]
+    assert schedule_week_starts(date(2026, 8, 31), weeks_ahead=0) == [date(2026, 8, 31)]
+    assert schedule_week_starts(date(2026, 9, 2), weeks_ahead=4) == [
+        date(2026, 8, 31),
+        date(2026, 9, 7),
+        date(2026, 9, 14),
+        date(2026, 9, 21),
+        date(2026, 9, 28),
+    ]

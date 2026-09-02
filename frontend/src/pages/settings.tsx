@@ -9,7 +9,7 @@ import ListItemText from '@mui/material/ListItemText'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
-import { useQuery } from '@tanstack/react-query'
+import { useQueries, useQuery } from '@tanstack/react-query'
 import { type ReactNode, useMemo, useState } from 'react'
 import { Navigate } from 'react-router'
 import { appConfig } from '../app/config'
@@ -17,10 +17,11 @@ import { type ThemePreference, useThemePreference } from '../app/theme-preferenc
 import { useUserPreferences } from '../app/user-preferences-context'
 import { ApplicantCodeDrawer } from '../features/profile/ApplicantCodeDrawer'
 import { GroupDrawer } from '../features/profile/GroupDrawer'
-import { TelegramDrawer } from '../features/profile/TelegramDrawer'
+import { TelegramDrawer, type TelegramGroupNotificationItem } from '../features/profile/TelegramDrawer'
 import { getTelegramStatus } from '../shared/api/notifications'
 import { queryKeys } from '../shared/api/queryKeys'
 import { type Group, getGroupSchedule } from '../shared/api/ruz'
+import type { ScheduleItem } from '../shared/api/users'
 import { useRequiredUser } from '../shared/api/useRequiredUser'
 import { getWeekStartDate, toIsoDate } from '../shared/date'
 import { AppScreen } from '../shared/ui/AppScreen'
@@ -56,6 +57,22 @@ export function SettingsPage() {
     queryFn: getTelegramStatus,
     enabled: user.status === 'ready',
   })
+  const groupNotificationItems = useMemo(
+    () =>
+      user.status === 'ready'
+        ? [user.profile.primary_group, ...user.profile.favorites].filter(
+            (item): item is ScheduleItem => item?.item_type === 'group',
+          )
+        : [],
+    [user],
+  )
+  const groupNotificationQueries = useQueries({
+    queries: groupNotificationItems.map((item) => ({
+      queryKey: queryKeys.schedule('group', item.ruz_id, currentWeekStartDate),
+      queryFn: () => getGroupSchedule(item.ruz_id, currentWeekStartDate),
+      enabled: telegramDrawerOpen && telegramQuery.data?.connected === true,
+    })),
+  })
   const currentGroup = currentGroupQuery.data?.group ?? (primaryGroupId ? createGroupFallback(primaryGroupId) : null)
 
   if (user.status === 'loading') {
@@ -85,6 +102,14 @@ export function SettingsPage() {
   ) : (
     currentGroup?.name ?? (primaryGroupId ? `Группа ${primaryGroupId}` : 'Не указана')
   )
+  const telegramGroups: TelegramGroupNotificationItem[] = groupNotificationItems.map((item, index) => {
+    const query = groupNotificationQueries[index]
+    return {
+      item,
+      title: query.data?.group.name ?? `Группа ${item.ruz_id}`,
+      loading: query.isPending && !query.data,
+    }
+  })
 
   return (
     <AppScreen>
@@ -147,7 +172,7 @@ export function SettingsPage() {
                 component="li"
                 direction="row"
                 spacing={2}
-                sx={{ alignItems: 'center', justifyContent: 'space-between', py: 1.75 }}
+                sx={{ alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1.75 }}
               >
                 <Stack spacing={0.5} sx={{ minWidth: 0 }}>
                   <Typography variant="body1">Показывать перерывы</Typography>
@@ -166,7 +191,7 @@ export function SettingsPage() {
                 component="li"
                 direction="row"
                 spacing={2}
-                sx={{ alignItems: 'center', justifyContent: 'space-between', py: 1.75 }}
+                sx={{ alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1.75 }}
               >
                 <Stack spacing={0.5} sx={{ minWidth: 0 }}>
                   <Typography variant="body1">Скрывать прошедшие занятия</Typography>
@@ -229,6 +254,7 @@ export function SettingsPage() {
         open={telegramDrawerOpen}
         onClose={() => setTelegramDrawerOpen(false)}
         status={telegramStatus}
+        groups={telegramGroups}
         loading={telegramQuery.isPending}
         error={telegramQuery.isError}
       />

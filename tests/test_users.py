@@ -92,9 +92,12 @@ async def test_set_primary_group_keeps_single_primary(override_db: None, overrid
 
     assert first.status_code == 200
     assert first.json()["primary_group"]["ruz_id"] == 42828
+    assert first.json()["primary_group"]["notifications_enabled"] is True
     assert second.status_code == 200
     assert second.json()["primary_group"]["ruz_id"] == 45476
+    assert second.json()["primary_group"]["notifications_enabled"] is True
     assert [item["ruz_id"] for item in second.json()["favorites"]] == [42828]
+    assert second.json()["favorites"][0]["notifications_enabled"] is False
 
 
 @pytest.mark.asyncio
@@ -112,12 +115,50 @@ async def test_add_group_and_teacher_favorites_without_duplicates(
     assert group.status_code == 200
     assert duplicate_group.status_code == 200
     assert group.json()["id"] == duplicate_group.json()["id"]
+    assert group.json()["notifications_enabled"] is False
     assert teacher.status_code == 200
     assert favorites.status_code == 200
+    assert all(item["notifications_enabled"] is False for item in favorites.json())
     assert {(item["item_type"], item["ruz_id"]) for item in favorites.json()} == {
         ("group", 42828),
         ("teacher", 9833),
     }
+
+
+@pytest.mark.asyncio
+async def test_update_group_notifications(override_db: None, override_ruz: None) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        await client.post("/api/v1/me")
+        created = await client.post("/api/v1/me/favorites", json={"item_type": "group", "ruz_id": 42828})
+        updated = await client.patch(
+            f"/api/v1/me/schedule-items/{created.json()['id']}/notifications",
+            json={"notifications_enabled": True},
+        )
+        profile = await client.get("/api/v1/me")
+        favorites = await client.get("/api/v1/me/favorites")
+
+    assert updated.status_code == 200
+    assert created.json()["notifications_enabled"] is False
+    assert updated.json()["notifications_enabled"] is True
+    assert profile.json()["favorites"][0]["notifications_enabled"] is True
+    assert favorites.json()[0]["notifications_enabled"] is True
+
+
+@pytest.mark.asyncio
+async def test_update_group_notifications_rejects_other_user_item(override_db: None, override_ruz: None) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as first_client:
+        await first_client.post("/api/v1/me")
+        created = await first_client.post("/api/v1/me/favorites", json={"item_type": "group", "ruz_id": 42828})
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as second_client:
+        await second_client.post("/api/v1/me")
+        response = await second_client.patch(
+            f"/api/v1/me/schedule-items/{created.json()['id']}/notifications",
+            json={"notifications_enabled": False},
+        )
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "SCHEDULE_ITEM_NOT_FOUND"
 
 
 @pytest.mark.asyncio

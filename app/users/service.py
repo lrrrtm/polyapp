@@ -74,7 +74,7 @@ async def set_primary_group(db: AsyncSession, user: User, ruz_id: int) -> UserSc
     await db.execute(
         update(UserScheduleItem)
         .where(UserScheduleItem.user_id == user.id, UserScheduleItem.is_primary.is_(True))
-        .values(is_primary=False)
+        .values(is_primary=False, notifications_enabled=False)
     )
 
     item = await _get_schedule_item(db, user, ScheduleItemType.GROUP, ruz_id)
@@ -84,10 +84,12 @@ async def set_primary_group(db: AsyncSession, user: User, ruz_id: int) -> UserSc
             item_type=ScheduleItemType.GROUP.value,
             ruz_id=ruz_id,
             is_primary=True,
+            notifications_enabled=True,
         )
         db.add(item)
     else:
         item.is_primary = True
+        item.notifications_enabled = True
 
     await db.flush()
     await db.refresh(item)
@@ -108,6 +110,28 @@ async def delete_schedule_item(db: AsyncSession, user: User, item_id: UUID) -> b
     await db.delete(item)
     await db.flush()
     return True
+
+
+async def update_schedule_item_notifications(
+    db: AsyncSession,
+    user: User,
+    item_id: UUID,
+    notifications_enabled: bool,
+) -> UserScheduleItem | None:
+    item = await db.scalar(
+        select(UserScheduleItem).where(
+            UserScheduleItem.id == item_id,
+            UserScheduleItem.user_id == user.id,
+            UserScheduleItem.item_type == ScheduleItemType.GROUP.value,
+        )
+    )
+    if item is None:
+        return None
+
+    item.notifications_enabled = notifications_enabled
+    await db.flush()
+    await db.refresh(item)
+    return item
 
 
 async def _get_schedule_item(

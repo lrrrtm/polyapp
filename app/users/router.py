@@ -10,8 +10,22 @@ from app.core.config import get_settings
 from app.db.session import get_db
 from app.users.deps import get_current_user, get_or_create_current_user, hash_identity_token
 from app.users.models import ScheduleItemType, User
-from app.users.schemas import FavoriteCreate, PrimaryGroupSet, SessionStatus, UserProfile, UserScheduleItemRead
-from app.users.service import add_schedule_item, delete_schedule_item, get_profile, get_user_by_identity_hash, set_primary_group
+from app.users.schemas import (
+    FavoriteCreate,
+    PrimaryGroupSet,
+    ScheduleItemNotificationsUpdate,
+    SessionStatus,
+    UserProfile,
+    UserScheduleItemRead,
+)
+from app.users.service import (
+    add_schedule_item,
+    delete_schedule_item,
+    get_profile,
+    get_user_by_identity_hash,
+    set_primary_group,
+    update_schedule_item_notifications,
+)
 
 router = APIRouter(tags=["users"])
 
@@ -106,6 +120,29 @@ async def remove_favorite(
             message="Избранное не найдено.",
             details={"favorite_id": str(item_id)},
         )
+
+
+@router.patch(
+    "/me/schedule-items/{item_id}/notifications",
+    response_model=UserScheduleItemRead,
+    responses=problem_responses(status.HTTP_404_NOT_FOUND),
+)
+async def update_schedule_item_notification_settings(
+    item_id: UUID,
+    payload: ScheduleItemNotificationsUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> UserScheduleItemRead:
+    item = await update_schedule_item_notifications(db, user, item_id, payload.notifications_enabled)
+    if item is None:
+        raise ApiError(
+            status_code=status.HTTP_404_NOT_FOUND,
+            code=ApiErrorCode.SCHEDULE_ITEM_NOT_FOUND,
+            title="Schedule item not found",
+            message="Расписание не найдено.",
+            details={"item_id": str(item_id)},
+        )
+    return UserScheduleItemRead.model_validate(item)
 
 
 async def validate_schedule_item_id(

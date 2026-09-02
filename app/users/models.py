@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID, uuid4
 
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, Index, Text, UniqueConstraint, func, text
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey, Index, Text, UniqueConstraint, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import Uuid
 
@@ -53,6 +53,7 @@ class UserScheduleItem(Base):
     item_type: Mapped[str] = mapped_column(Text, nullable=False)
     ruz_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     is_primary: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="false")
+    notifications_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     user: Mapped[User] = relationship(back_populates="schedule_items")

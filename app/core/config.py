@@ -32,6 +32,8 @@ class Settings(BaseSettings):
         default=15 * 60,
         validation_alias="SCHEDULE_REFRESH_INTERVAL_SECONDS",
     )
+    schedule_cache_ttl_seconds: int = Field(default=15 * 60, validation_alias="SCHEDULE_CACHE_TTL_SECONDS")
+    schedule_refresh_weeks_ahead: int = Field(default=4, validation_alias="SCHEDULE_REFRESH_WEEKS_AHEAD")
     schedule_refresh_enabled: bool = Field(default=True, validation_alias="SCHEDULE_REFRESH_ENABLED")
     schedule_refresh_concurrency: int = Field(default=4, validation_alias="SCHEDULE_REFRESH_CONCURRENCY")
     academic_calendars_refresh_interval_seconds: int = Field(

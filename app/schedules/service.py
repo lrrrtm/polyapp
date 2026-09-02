@@ -8,9 +8,9 @@ from sqlalchemy import distinct, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.clients.ruz import RuzApiError, RuzClient, RuzNotFoundError
-from app.core.config import Settings
-from app.schemas.ruz import GroupSchedule, ScheduleMeta
+from app.core.config import Settings, get_settings
 from app.notifications.service import enqueue_schedule_change_notifications
+from app.schemas.ruz import GroupSchedule, ScheduleMeta
 from app.schedules.diff import diff_schedules, schedule_hash, schedule_payload
 from app.schedules.models import ScheduleCache, ScheduleChangeEvent
 from app.users.models import ScheduleItemType, User, UserScheduleItem
@@ -23,10 +23,10 @@ def week_start_for(day: date) -> date:
     return day - timedelta(days=day.weekday())
 
 
-def schedule_week_starts(today: date | None = None) -> list[date]:
+def schedule_week_starts(today: date | None = None, weeks_ahead: int | None = None) -> list[date]:
     start = week_start_for(today or date.today())
-    end = week_start_for((today or date.today()) + timedelta(days=6))
-    return [start] if end == start else [start, end]
+    ahead = get_settings().schedule_refresh_weeks_ahead if weeks_ahead is None else weeks_ahead
+    return [start + timedelta(weeks=week) for week in range(ahead + 1)]
 
 
 async def get_group_schedule_cached_or_live(
@@ -37,7 +37,8 @@ async def get_group_schedule_cached_or_live(
 ) -> GroupSchedule:
     week_start = week_start_for(schedule_date or date.today())
     saved_group = await is_group_saved(db, group_id)
-    if saved_group:
+    cache = await get_cache_row(db, group_id, week_start)
+    if saved_group and cache and is_cache_fresh(cache):
         cached = await get_cached_group_schedule(db, group_id, week_start)
         if cached:
             return cached
@@ -47,7 +48,7 @@ async def get_group_schedule_cached_or_live(
     except RuzNotFoundError:
         raise
     except RuzApiError as error:
-        if await get_cache_row(db, group_id, week_start):
+        if cache:
             await mark_cache_refresh_failed(db, group_id, week_start, str(error))
             cached = await get_cached_group_schedule(db, group_id, week_start, stale=True)
             if cached:
@@ -87,6 +88,15 @@ async def get_cached_group_schedule(
 
 def is_cache_stale(cache: ScheduleCache) -> bool:
     return cache.last_refresh_failed_at is not None and cache.last_refresh_failed_at > cache.fetched_at
+
+
+def is_cache_fresh(cache: ScheduleCache) -> bool:
+    ttl = get_settings().schedule_cache_ttl_seconds
+    now = datetime.now(UTC)
+    fetched_at = cache.fetched_at
+    if fetched_at.tzinfo is None:
+        now = now.replace(tzinfo=None)
+    return now - fetched_at < timedelta(seconds=ttl)
 
 
 async def save_group_schedule_cache(db: AsyncSession, schedule: GroupSchedule) -> ScheduleCache:
@@ -221,7 +231,7 @@ async def refresh_saved_group_schedules(
                 return
             try:
                 group_ids = await list_saved_group_ids(db)
-                week_starts = schedule_week_starts()
+                week_starts = schedule_week_starts(weeks_ahead=settings.schedule_refresh_weeks_ahead)
                 await _refresh_groups(db, ruz, group_ids, week_starts, settings.schedule_refresh_concurrency)
                 await db.commit()
             finally:

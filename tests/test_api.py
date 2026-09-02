@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from sqlalchemy import select
@@ -21,6 +21,7 @@ class FakeRuzClient:
     def __init__(self, fail: bool = False, group_schedule: GroupSchedule | None = None) -> None:
         self.fail = fail
         self.group_schedule = group_schedule
+        self.group_schedule_calls: list[tuple[int, object]] = []
 
     async def get_faculties(self) -> list[Faculty]:
         if self.fail:
@@ -38,6 +39,7 @@ class FakeRuzClient:
         )
 
     async def get_group_schedule(self, group_id: int, schedule_date: object = None) -> object:
+        self.group_schedule_calls.append((group_id, schedule_date))
         if self.fail:
             raise RuzApiError("raw RUZ failure")
         if self.group_schedule:
@@ -45,7 +47,7 @@ class FakeRuzClient:
         raise AssertionError("mocked 42828 schedule should not call RUZ")
 
 
-def make_group_schedule(group_id: int = 44302) -> GroupSchedule:
+def make_group_schedule(group_id: int = 44302, subject: str = "Связь") -> GroupSchedule:
     return GroupSchedule(
         week=Week(date_start="2026.08.31", date_end="2026.09.06", is_odd=True),
         group=Group(id=group_id, name="4931102/40101"),
@@ -55,7 +57,7 @@ def make_group_schedule(group_id: int = 44302) -> GroupSchedule:
                 "date": date(2026, 9, 2),
                 "lessons": [
                     {
-                        "subject": "Связь",
+                        "subject": subject,
                         "time_start": datetime(2026, 9, 2, 7, 0, tzinfo=UTC),
                         "time_end": datetime(2026, 9, 2, 8, 30, tzinfo=UTC),
                         "auditories": [],
@@ -190,7 +192,8 @@ async def test_group_schedule_uses_cache_for_saved_group(override_db: None, db_s
     db_session.add(UserScheduleItem(user_id=user.id, item_type="group", ruz_id=44302, is_primary=True))
     await save_group_schedule_cache(db_session, make_group_schedule())
     await db_session.flush()
-    app.dependency_overrides[get_ruz_client] = lambda: FakeRuzClient(fail=True)
+    ruz = FakeRuzClient(fail=True)
+    app.dependency_overrides[get_ruz_client] = lambda: ruz
     try:
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -203,11 +206,50 @@ async def test_group_schedule_uses_cache_for_saved_group(override_db: None, db_s
     assert response.json()["meta"]["is_stale"] is False
     assert response.json()["meta"]["fetched_at"] is not None
     assert response.json()["days"][0]["lessons"][0]["subject"] == "Связь"
+    assert ruz.group_schedule_calls == []
+
+
+@pytest.mark.asyncio
+async def test_group_schedule_refreshes_stale_cache_for_saved_group(
+    override_db: None,
+    db_session: AsyncSession,
+) -> None:
+    user = User(identity_hash="user")
+    db_session.add(user)
+    await db_session.flush()
+    db_session.add(UserScheduleItem(user_id=user.id, item_type="group", ruz_id=44302, is_primary=True))
+    cache = await save_group_schedule_cache(db_session, make_group_schedule(subject="Старое"))
+    cache.fetched_at = datetime.now(UTC) - timedelta(hours=1)
+    await db_session.flush()
+
+    ruz = FakeRuzClient(group_schedule=make_group_schedule(subject="Новое"))
+    app.dependency_overrides[get_ruz_client] = lambda: ruz
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/api/v1/groups/44302/schedule", params={"date": "2026-08-31"})
+    finally:
+        app.dependency_overrides.pop(get_ruz_client, None)
+
+    assert response.status_code == 200
+    assert response.json()["meta"]["source"] == "live"
+    assert response.json()["meta"]["is_stale"] is False
+    assert response.json()["days"][0]["lessons"][0]["subject"] == "Новое"
+    assert ruz.group_schedule_calls == [(44302, date(2026, 8, 31))]
+
+    refreshed_cache = await db_session.scalar(select(ScheduleCache))
+    assert refreshed_cache is not None
+    assert refreshed_cache.payload["days"][0]["lessons"][0]["subject"] == "Новое"
 
 
 @pytest.mark.asyncio
 async def test_group_schedule_returns_stale_cache_when_ruz_fails(override_db: None, db_session: AsyncSession) -> None:
-    await save_group_schedule_cache(db_session, make_group_schedule())
+    user = User(identity_hash="user")
+    db_session.add(user)
+    await db_session.flush()
+    db_session.add(UserScheduleItem(user_id=user.id, item_type="group", ruz_id=44302, is_primary=True))
+    cache = await save_group_schedule_cache(db_session, make_group_schedule())
+    cache.fetched_at = datetime.now(UTC) - timedelta(hours=1)
     await db_session.flush()
     app.dependency_overrides[get_ruz_client] = lambda: FakeRuzClient(fail=True)
     try:

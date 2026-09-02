@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { apiDelete, apiGet, apiPost, apiPut } from './http'
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from './http'
 
 const sessionStatusSchema = z.object({
   has_user: z.boolean(),
@@ -10,6 +10,7 @@ const scheduleItemSchema = z.object({
   item_type: z.enum(['group', 'teacher']),
   ruz_id: z.number(),
   is_primary: z.boolean(),
+  notifications_enabled: z.boolean(),
   created_at: z.string(),
 })
 
@@ -54,6 +55,17 @@ export async function addFavorite(itemType: ScheduleItem['item_type'], ruzId: nu
 
 export async function deleteFavorite(itemId: string): Promise<void> {
   return apiDelete(`/api/v1/me/favorites/${itemId}`)
+}
+
+export async function updateScheduleItemNotifications(
+  itemId: string,
+  notificationsEnabled: boolean,
+): Promise<ScheduleItem> {
+  return apiPatch(
+    `/api/v1/me/schedule-items/${itemId}/notifications`,
+    { notifications_enabled: notificationsEnabled },
+    scheduleItemSchema,
+  )
 }
 
 export function setUserProfileApplicantCode(

@@ -172,6 +172,7 @@ async def enqueue_schedule_change_notifications(
         .where(
             UserScheduleItem.item_type == ScheduleItemType.GROUP.value,
             UserScheduleItem.ruz_id == event.ruz_id,
+            UserScheduleItem.notifications_enabled.is_(True),
             TelegramAccount.is_active.is_(True),
             UserNotificationSettings.schedule_changes_enabled.is_(True),
         )
@@ -179,29 +180,38 @@ async def enqueue_schedule_change_notifications(
 
     now = datetime.now(UTC)
     for user_id, chat_id, settings in rows:
-        for index, change in enumerate(event.changes):
+        messages = []
+        buckets = []
+        for change in event.changes:
             for bucket in notification_buckets(change):
                 if not settings_allows_bucket(settings, bucket):
                     continue
 
-                text = render_schedule_change_message(group_name, change, bucket)
-                outbox = NotificationOutbox(
-                    user_id=user_id,
-                    channel=NotificationChannel.TELEGRAM.value,
-                    telegram_chat_id=chat_id,
-                    event_type=bucket,
-                    source_event_id=event.id,
-                    payload={"group_name": group_name, "change": change},
-                    text=text,
-                    dedupe_key=f"telegram:{user_id}:{event.id}:{index}:{bucket}",
-                    next_attempt_at=now,
-                    updated_at=now,
-                )
-                exists = await db.scalar(
-                    select(NotificationOutbox.id).where(NotificationOutbox.dedupe_key == outbox.dedupe_key).limit(1)
-                )
-                if not exists:
-                    db.add(outbox)
+                messages.append(render_schedule_change_message(group_name, change, bucket))
+                buckets.append(bucket)
+
+        if not messages:
+            continue
+
+        dedupe_key = f"telegram:{user_id}:{event.id}:schedule_changes"
+        exists = await db.scalar(select(NotificationOutbox.id).where(NotificationOutbox.dedupe_key == dedupe_key).limit(1))
+        if exists:
+            continue
+
+        db.add(
+            NotificationOutbox(
+                user_id=user_id,
+                channel=NotificationChannel.TELEGRAM.value,
+                telegram_chat_id=chat_id,
+                event_type=buckets[0] if len(set(buckets)) == 1 else "schedule_changes",
+                source_event_id=event.id,
+                payload={"group_name": group_name, "changes": event.changes},
+                text="\n\n".join(messages),
+                dedupe_key=dedupe_key,
+                next_attempt_at=now,
+                updated_at=now,
+            )
+        )
 
     await db.flush()
 
@@ -233,6 +243,7 @@ def settings_allows_bucket(settings: UserNotificationSettings, bucket: str) -> b
 def render_schedule_change_message(group_name: str, change: dict, bucket: str) -> str:
     lesson = change.get("lesson") or change.get("after") or change.get("before") or {}
     subject = lesson.get("subject") or "Занятие"
+    lesson_type = str(lesson.get("type_name") or "").strip()
     when = format_lesson_time(lesson)
     title = {
         "lesson_added": "➕ Занятие добавлено",
@@ -242,6 +253,8 @@ def render_schedule_change_message(group_name: str, change: dict, bucket: str) -
         "teacher_changed": "👤 Изменился преподаватель",
     }[bucket]
     lines = [f"<b>{title}</b>", "", f"Группа {escape(group_name)}", escape(subject)]
+    if lesson_type:
+        lines.append(escape(lesson_type))
     if when:
         lines.append(when)
     if bucket in {"time_changed", "auditorium_changed", "teacher_changed"}:
@@ -253,10 +266,23 @@ def render_schedule_change_message(group_name: str, change: dict, bucket: str) -
 
 def format_lesson_time(lesson: dict) -> str:
     date_value = str(lesson.get("date") or "").strip()
-    start = str(lesson.get("time_start") or "").strip()
-    end = str(lesson.get("time_end") or "").strip()
+    start = format_time_value(lesson.get("time_start"))
+    end = format_time_value(lesson.get("time_end"))
     time_range = f"{start}–{end}" if start and end else start or end
     return ", ".join(part for part in [format_date_value(date_value), time_range] if part)
+
+
+def format_time_value(value: object) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    if len(raw) == 5 and raw[2] == ":":
+        return raw
+
+    try:
+        return datetime.fromisoformat(raw.replace("Z", "+00:00")).strftime("%H:%M")
+    except ValueError:
+        return raw
 
 
 def format_date_value(value: str) -> str:
