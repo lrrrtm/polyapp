@@ -60,20 +60,20 @@ export function LessonDetailsDrawer({ open, item, mapUrl, onClose, onExited }: L
         </Stack>
         <Stack spacing={1.25} data-tour="lesson-actions">
           <Stack direction="row" spacing={1.25}>
-            <Button variant="contained" size="large" disabled={!lmsUrl} onClick={() => openExternalUrl(lmsUrl)} fullWidth>
+            <Button variant="contained" size="large" disabled={!lmsUrl} {...externalLinkProps(lmsUrl)} fullWidth>
               СДО
             </Button>
             <Button
               variant="contained"
               size="large"
               disabled={!webinarUrl}
-              onClick={() => openExternalUrl(webinarUrl)}
+              {...externalLinkProps(webinarUrl)}
               fullWidth
             >
               Вебинар
             </Button>
           </Stack>
-          <Button variant="outlined" size="large" disabled={!mapUrl} onClick={() => openExternalUrl(mapUrl)} fullWidth>
+          <Button variant="outlined" size="large" disabled={!mapUrl} {...externalLinkProps(mapUrl)} fullWidth>
             Маршрут до корпуса
           </Button>
         </Stack>
@@ -147,8 +147,13 @@ function normalizeUrl(url: string | null | undefined): string | undefined {
   return trimmedUrl ? trimmedUrl : undefined
 }
 
-function openExternalUrl(url: string | undefined) {
-  if (url) {
-    window.open(url, '_blank', 'noopener,noreferrer')
-  }
+function externalLinkProps(url: string | undefined) {
+  return url
+    ? {
+        component: 'a' as const,
+        href: url,
+        target: '_blank',
+        rel: 'noopener noreferrer',
+      }
+    : {}
 }
